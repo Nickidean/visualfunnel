@@ -1,0 +1,9 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+# Netlify auto-installs the Next.js runtime plugin, which handles the App
+# Router build output. Set the NEXT_PUBLIC_SUPABASE_* env vars in the Netlify
+# site settings for persistence to use Supabase.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
