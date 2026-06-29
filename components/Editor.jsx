@@ -33,7 +33,14 @@ export default function Editor({ initialJourney, onBack, onSaved }) {
   const saveTimer = useRef(null);
   const firstRender = useRef(true);
 
-  // Debounced autosave.
+  // Keep the latest onSaved without making it an effect dependency — otherwise
+  // a parent re-render would re-trigger the autosave and loop endlessly.
+  const onSavedRef = useRef(onSaved);
+  useEffect(() => {
+    onSavedRef.current = onSaved;
+  }, [onSaved]);
+
+  // Debounced autosave — runs only when the journey itself changes.
   useEffect(() => {
     if (firstRender.current) {
       firstRender.current = false;
@@ -46,14 +53,14 @@ export default function Editor({ initialJourney, onBack, onSaved }) {
       try {
         const saved = await saveJourney(journey);
         setSaveState("saved");
-        onSaved?.(saved);
+        onSavedRef.current?.(saved);
       } catch (e) {
         console.error("Save failed", e);
         setSaveState("dirty");
       }
     }, 600);
     return () => saveTimer.current && clearTimeout(saveTimer.current);
-  }, [journey, onSaved]);
+  }, [journey]);
 
   // Editor keeps empty lanes so freshly-added lanes still show their "+ step".
   const vm = useMemo(
