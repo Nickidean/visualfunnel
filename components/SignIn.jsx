@@ -28,7 +28,7 @@ export default function SignIn() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-6">
       <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-7 shadow-sm">
-        <h1 className="text-xl font-bold">Journey Funnel</h1>
+        <h1 className="text-xl font-bold">Visual Funnel</h1>
         <p className="mt-1 text-sm text-slate-500">
           Sign in with your email to access your journeys.
         </p>

@@ -36,7 +36,7 @@ export default function JourneyLibrary({
     <div className="mx-auto max-w-4xl px-6 py-10">
       <header className="mb-8 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Journey Funnel</h1>
+          <h1 className="text-2xl font-bold">Visual Funnel</h1>
           <p className="mt-1 text-sm text-slate-500">
             Map a customer journey as a visual funnel — per-device steps,
             branching, notes and a present-mode walkthrough.

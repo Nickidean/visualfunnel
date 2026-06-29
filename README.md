@@ -1,4 +1,4 @@
-# Journey Funnel
+# Visual Funnel
 
 A lightweight internal tool for mapping a customer journey as a visual funnel.
 Add a screen per step, attach notes, links and per-device data, see where

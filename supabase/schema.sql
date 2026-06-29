@@ -1,4 +1,4 @@
--- Journey Funnel — Supabase schema
+-- Visual Funnel — Supabase schema
 -- Run this in the Supabase SQL editor (or via the CLI) to provision the
 -- backend. It creates the journeys table, row-level security, and a public
 -- screenshots bucket.
