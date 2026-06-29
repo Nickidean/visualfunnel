@@ -7,8 +7,13 @@ import {
   ChevronRight,
   ExternalLink,
   Image as ImageIcon,
+  Columns,
+  Maximize2,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import DeviceToggle from "./DeviceToggle";
+import PresentBoard from "./PresentBoard";
 import { buildViewModel } from "@/lib/compute";
 
 // Flatten the device view-model into ordered present-mode frames. At a fork,
@@ -54,18 +59,28 @@ export default function PresentMode({ journey, device, onDeviceChange, onClose }
   const vm = useMemo(() => buildViewModel(journey, device), [journey, device]);
   const frames = useMemo(() => buildFrames(vm), [vm]);
   const [idx, setIdx] = useState(0);
+  const [mode, setMode] = useState("walk"); // walk | overview
+  const [zoom, setZoom] = useState(0.85);
   const clamped = Math.min(idx, Math.max(0, frames.length - 1));
+
+  // Jump from an overview tile into the walkthrough at that step.
+  function pickStep(stepId) {
+    const i = frames.findIndex((fr) => fr.step.id === stepId);
+    if (i >= 0) setIdx(i);
+    setMode("walk");
+  }
 
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "Escape") onClose();
+      if (mode !== "walk") return; // arrows drive the walkthrough only
       if (e.key === "ArrowRight")
         setIdx((i) => Math.min(i + 1, frames.length - 1));
       if (e.key === "ArrowLeft") setIdx((i) => Math.max(i - 1, 0));
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [frames.length, onClose]);
+  }, [frames.length, onClose, mode]);
 
   useEffect(() => {
     setIdx((i) => Math.min(i, Math.max(0, frames.length - 1)));
@@ -78,10 +93,54 @@ export default function PresentMode({ journey, device, onDeviceChange, onClose }
       <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 gap-3">
         <div className="text-sm text-white/60 truncate">{journey.name}</div>
         <div className="flex items-center gap-3">
-          <DeviceToggle value={device} onChange={onDeviceChange} size="sm" />
-          <div className="text-sm text-white/60 hidden sm:block">
-            {frames.length ? `${clamped + 1} / ${frames.length}` : "0 / 0"}
+          {/* Walkthrough / Overview toggle */}
+          <div className="inline-flex rounded-lg border border-white/15 bg-white/5 p-0.5">
+            <button
+              onClick={() => setMode("walk")}
+              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ${
+                mode === "walk" ? "bg-white text-slate-900" : "text-white/70 hover:bg-white/10"
+              }`}
+            >
+              <Maximize2 size={13} /> Walkthrough
+            </button>
+            <button
+              onClick={() => setMode("overview")}
+              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ${
+                mode === "overview" ? "bg-white text-slate-900" : "text-white/70 hover:bg-white/10"
+              }`}
+            >
+              <Columns size={13} /> Overview
+            </button>
           </div>
+
+          {mode === "overview" && (
+            <div className="hidden sm:flex items-center gap-1">
+              <button
+                onClick={() => setZoom((z) => Math.max(0.4, +(z - 0.1).toFixed(2)))}
+                className="rounded-md bg-white/10 hover:bg-white/20 p-1.5"
+                aria-label="Zoom out"
+              >
+                <ZoomOut size={15} />
+              </button>
+              <span className="text-xs text-white/50 w-9 text-center tabular-nums">
+                {Math.round(zoom * 100)}%
+              </span>
+              <button
+                onClick={() => setZoom((z) => Math.min(1.4, +(z + 0.1).toFixed(2)))}
+                className="rounded-md bg-white/10 hover:bg-white/20 p-1.5"
+                aria-label="Zoom in"
+              >
+                <ZoomIn size={15} />
+              </button>
+            </div>
+          )}
+
+          <DeviceToggle value={device} onChange={onDeviceChange} size="sm" />
+          {mode === "walk" && (
+            <div className="text-sm text-white/60 hidden sm:block">
+              {frames.length ? `${clamped + 1} / ${frames.length}` : "0 / 0"}
+            </div>
+          )}
           <button
             onClick={onClose}
             className="text-white/60 hover:text-white flex items-center gap-1.5 text-sm"
@@ -91,7 +150,15 @@ export default function PresentMode({ journey, device, onDeviceChange, onClose }
         </div>
       </div>
 
-      {!f ? (
+      {mode === "overview" ? (
+        frames.length === 0 ? (
+          <div className="flex-1 flex items-center justify-center text-white/40">
+            No steps to present in this device view.
+          </div>
+        ) : (
+          <PresentBoard vm={vm} zoom={zoom} onPick={pickStep} />
+        )
+      ) : !f ? (
         <div className="flex-1 flex items-center justify-center text-white/40">
           No steps to present in this device view.
         </div>
@@ -181,6 +248,7 @@ export default function PresentMode({ journey, device, onDeviceChange, onClose }
         </div>
       )}
 
+      {mode === "walk" && (
       <div className="flex items-center justify-center gap-4 px-6 py-5 border-t border-white/10">
         <button
           onClick={() => setIdx((i) => Math.max(i - 1, 0))}
@@ -212,6 +280,13 @@ export default function PresentMode({ journey, device, onDeviceChange, onClose }
           Next <ChevronRight size={18} />
         </button>
       </div>
+      )}
+
+      {mode === "overview" && frames.length > 0 && (
+        <div className="text-center text-xs text-white/40 py-3 border-t border-white/10">
+          Drag to pan · click a step to walk it · use the zoom controls to fit more in
+        </div>
+      )}
     </div>
   );
 }
