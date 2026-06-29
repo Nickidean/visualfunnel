@@ -25,7 +25,13 @@ storage, deployable on Netlify.
   reads as "A/B test deck", not a raw URL). An indicator on each card shows
   which steps have notes or links.
 - **Screenshots** — upload, drag or paste. Stored in Supabase Storage; click
-  any screenshot to view it full size (lightbox).
+  any screenshot to view it full size (lightbox). Thumbnails render at a fixed
+  width with their natural height (full image, never cropped), so a taller page
+  just makes a taller card. Capture desktop screenshots at a single consistent
+  width — 1280px is recommended (see `lib/layout.js`) — and they line up neatly.
+- **Present overview** — a board view of the whole journey at once: drag to pan,
+  scroll (mouse wheel) to zoom, "Fit" to frame everything, and click any step to
+  jump into the walkthrough there.
 - **Export** — the journey as a text outline, including branches and links,
   respecting the selected device.
 - **Present mode** — full-screen walkthrough, one step at a time, screenshot

@@ -9,8 +9,6 @@ import {
   Image as ImageIcon,
   Columns,
   Maximize2,
-  ZoomIn,
-  ZoomOut,
 } from "lucide-react";
 import DeviceToggle from "./DeviceToggle";
 import PresentBoard from "./PresentBoard";
@@ -60,7 +58,6 @@ export default function PresentMode({ journey, device, onDeviceChange, onClose }
   const frames = useMemo(() => buildFrames(vm), [vm]);
   const [idx, setIdx] = useState(0);
   const [mode, setMode] = useState("walk"); // walk | overview
-  const [zoom, setZoom] = useState(0.85);
   const clamped = Math.min(idx, Math.max(0, frames.length - 1));
 
   // Jump from an overview tile into the walkthrough at that step.
@@ -113,28 +110,6 @@ export default function PresentMode({ journey, device, onDeviceChange, onClose }
             </button>
           </div>
 
-          {mode === "overview" && (
-            <div className="hidden sm:flex items-center gap-1">
-              <button
-                onClick={() => setZoom((z) => Math.max(0.4, +(z - 0.1).toFixed(2)))}
-                className="rounded-md bg-white/10 hover:bg-white/20 p-1.5"
-                aria-label="Zoom out"
-              >
-                <ZoomOut size={15} />
-              </button>
-              <span className="text-xs text-white/50 w-9 text-center tabular-nums">
-                {Math.round(zoom * 100)}%
-              </span>
-              <button
-                onClick={() => setZoom((z) => Math.min(1.4, +(z + 0.1).toFixed(2)))}
-                className="rounded-md bg-white/10 hover:bg-white/20 p-1.5"
-                aria-label="Zoom in"
-              >
-                <ZoomIn size={15} />
-              </button>
-            </div>
-          )}
-
           <DeviceToggle value={device} onChange={onDeviceChange} size="sm" />
           {mode === "walk" && (
             <div className="text-sm text-white/60 hidden sm:block">
@@ -156,7 +131,7 @@ export default function PresentMode({ journey, device, onDeviceChange, onClose }
             No steps to present in this device view.
           </div>
         ) : (
-          <PresentBoard vm={vm} zoom={zoom} onPick={pickStep} />
+          <PresentBoard vm={vm} onPick={pickStep} />
         )
       ) : !f ? (
         <div className="flex-1 flex items-center justify-center text-white/40">
@@ -284,7 +259,7 @@ export default function PresentMode({ journey, device, onDeviceChange, onClose }
 
       {mode === "overview" && frames.length > 0 && (
         <div className="text-center text-xs text-white/40 py-3 border-t border-white/10">
-          Drag to pan · click a step to walk it · use the zoom controls to fit more in
+          Drag to pan · scroll to zoom · click a step to walk it · Fit to see it all
         </div>
       )}
     </div>

@@ -9,6 +9,7 @@ import {
   FileText,
   Link as LinkIcon,
 } from "lucide-react";
+import { THUMB, PLACEHOLDER_ASPECT } from "@/lib/layout";
 
 // A single step rendered in the funnel rail (prototype styling).
 // `value` and `retention` come pre-computed from the device view-model.
@@ -31,27 +32,32 @@ export default function StepCard({
 
   return (
     <div
-      className={`bg-white rounded-xl border border-slate-200 shadow-sm ${
-        small ? "w-44" : "w-52"
-      } shrink-0`}
+      className="bg-white rounded-xl border border-slate-200 shadow-sm shrink-0"
+      style={{ width: small ? THUMB.cardSmall : THUMB.card }}
     >
-      <button
-        onClick={() => step.screenshotUrl && onLightbox?.(step.screenshotUrl, step.title)}
-        className="w-full bg-slate-100 rounded-t-xl flex items-center justify-center overflow-hidden"
-        style={{ height: small ? "84px" : "104px" }}
-        aria-label={step.screenshotUrl ? "View screenshot full size" : "No screenshot"}
-      >
-        {step.screenshotUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
+      {step.screenshotUrl ? (
+        <button
+          onClick={() => onLightbox?.(step.screenshotUrl, step.title)}
+          className="block w-full bg-slate-100 rounded-t-xl overflow-hidden"
+          aria-label="View screenshot full size"
+        >
+          {/* Fixed width (the card width); natural height — full screenshot, never cropped. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={step.screenshotUrl}
             alt={step.title}
-            className="w-full h-full object-cover"
+            className="block w-full h-auto"
           />
-        ) : (
+        </button>
+      ) : (
+        <div
+          className="w-full bg-slate-100 rounded-t-xl flex items-center justify-center"
+          style={{ aspectRatio: PLACEHOLDER_ASPECT }}
+          aria-label="No screenshot"
+        >
           <ImageIcon size={20} className="text-slate-300" />
-        )}
-      </button>
+        </div>
+      )}
 
       <div className="p-3">
         <h3 className="font-semibold text-sm truncate" title={step.title}>
