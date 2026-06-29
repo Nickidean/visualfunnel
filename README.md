@@ -51,13 +51,27 @@ Open http://localhost:3000.
 Without Supabase credentials the app runs against **browser localStorage**, so
 you can try everything immediately. Data lives only in that browser.
 
-## Connecting Supabase (real persistence)
+## Connecting Supabase (real persistence + team sign-in)
 
-1. Create a Supabase project.
-2. Run [`supabase/schema.sql`](supabase/schema.sql) in the SQL editor. It
-   creates the `journeys` table with row-level security and a public
-   `screenshots` storage bucket.
-3. Copy `.env.example` to `.env.local` and fill in:
+Journeys are stored per-user: each teammate signs in with their email
+(passwordless magic link) and sees only their own journeys, enforced by
+row-level security.
+
+1. **Create a Supabase project.**
+2. **Run the schema.** Paste [`supabase/schema.sql`](supabase/schema.sql) into
+   the SQL editor and run it. It creates the `journeys` table with row-level
+   security and a public `screenshots` storage bucket.
+3. **Enable email auth.** In the Supabase dashboard → **Authentication →
+   Providers → Email**, make sure Email is enabled (magic link works out of the
+   box). Under **Authentication → URL Configuration**, set:
+   - **Site URL** to your app URL (e.g. `https://your-site.netlify.app`, or
+     `http://localhost:3000` for local dev).
+   - **Redirect URLs**: add both your Netlify URL and `http://localhost:3000`.
+4. **Restrict who can join (small team).** To keep it to trusted people, either
+   turn **off** "Allow new users to sign up" (Authentication → Sign In / Up) and
+   invite teammates via **Authentication → Users → Invite**, or leave sign-ups
+   on and share the URL only with your team.
+5. **Set env vars.** Copy `.env.example` to `.env.local` and fill in:
 
    ```
    NEXT_PUBLIC_SUPABASE_URL=...
@@ -65,13 +79,11 @@ you can try everything immediately. Data lives only in that browser.
    NEXT_PUBLIC_SUPABASE_BUCKET=screenshots
    ```
 
-Once set, journeys and screenshots are stored in Supabase and synced across
-sessions and devices.
+   (Find URL + anon key under **Project Settings → API**.)
 
-> Note: the RLS policies scope journeys to the signed-in owner via Supabase
-> Auth. Wire in your preferred Supabase Auth sign-in flow before relying on the
-> multi-user policies in production. The data layer reads the current user via
-> `supabase.auth.getUser()`.
+Once these are set the app shows a sign-in screen; after signing in, journeys
+and screenshots persist to Supabase and sync across sessions and devices.
+Without the env vars the app skips sign-in and saves to browser localStorage.
 
 ## Data model
 
@@ -101,9 +113,17 @@ Normalise into separate tables later only if cross-journey querying is needed.
 
 ## Deploying to Netlify
 
-The included `netlify.toml` builds with `npm run build` and uses the Next.js
-runtime plugin. Set the `NEXT_PUBLIC_SUPABASE_*` env vars in the Netlify site
-settings.
+1. Push this repo to GitHub and **Add new site → Import an existing project** in
+   Netlify, pointing at the repo. The included `netlify.toml` already sets the
+   build command (`npm run build`) and the Next.js runtime plugin.
+2. In **Site settings → Environment variables**, add:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `NEXT_PUBLIC_SUPABASE_BUCKET` (`screenshots`)
+3. Deploy. Then copy your site's URL into the Supabase **Site URL** and
+   **Redirect URLs** (step 3 above) so the magic-link emails return to your app.
+4. Visit the site, sign in with your email, and you're live. Invite teammates
+   by sharing the URL (and inviting them in Supabase if sign-ups are off).
 
 ## Out of scope (for now)
 

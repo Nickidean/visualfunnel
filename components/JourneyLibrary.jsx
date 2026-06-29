@@ -18,6 +18,8 @@ export default function JourneyLibrary({
   journeys,
   loading,
   backendLabel,
+  userEmail,
+  onSignOut,
   onOpen,
   onCreate,
   onRename,
@@ -32,13 +34,28 @@ export default function JourneyLibrary({
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
-      <header className="mb-8">
-        <h1 className="text-2xl font-bold">Journey Funnel</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Map a customer journey as a visual funnel — per-device steps,
-          branching, notes and a present-mode walkthrough.
-        </p>
-        <p className="mt-1 text-xs text-slate-400">Storage: {backendLabel}</p>
+      <header className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Journey Funnel</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Map a customer journey as a visual funnel — per-device steps,
+            branching, notes and a present-mode walkthrough.
+          </p>
+          <p className="mt-1 text-xs text-slate-400">Storage: {backendLabel}</p>
+        </div>
+        {userEmail && (
+          <div className="shrink-0 text-right">
+            <div className="text-xs text-slate-500">{userEmail}</div>
+            {onSignOut && (
+              <button
+                onClick={onSignOut}
+                className="mt-1 rounded-md border border-slate-300 px-2.5 py-1 text-xs text-slate-600 hover:bg-slate-100"
+              >
+                Sign out
+              </button>
+            )}
+          </div>
+        )}
       </header>
 
       <div className="mb-6 flex gap-2">

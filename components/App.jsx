@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import JourneyLibrary from "./JourneyLibrary";
 import Editor from "./Editor";
+import SignIn from "./SignIn";
 import {
   listJourneys,
   getJourney,
@@ -11,6 +12,7 @@ import {
   deleteJourney,
   usingSupabase,
 } from "@/lib/journeys";
+import { authEnabled, getSessionUser, onAuthChange, signOut } from "@/lib/auth";
 
 export default function App() {
   const [view, setView] = useState("library"); // library | editor
@@ -18,9 +20,33 @@ export default function App() {
   const [current, setCurrent] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const [user, setUser] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
+
   const backendLabel = usingSupabase()
-    ? "Supabase (synced)"
+    ? "Supabase (synced to the cloud)"
     : "This browser only (set Supabase env vars to sync)";
+
+  // Establish auth state (or skip when Supabase isn't configured).
+  useEffect(() => {
+    let unsub = () => {};
+    if (!authEnabled()) {
+      setAuthReady(true);
+      return;
+    }
+    getSessionUser()
+      .then(setUser)
+      .finally(() => setAuthReady(true));
+    unsub = onAuthChange((u) => {
+      setUser(u);
+      if (!u) {
+        setView("library");
+        setCurrent(null);
+        setJourneys([]);
+      }
+    });
+    return () => unsub();
+  }, []);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -33,9 +59,12 @@ export default function App() {
     }
   }, []);
 
+  // Load journeys once we're authenticated (or auth is disabled).
   useEffect(() => {
+    if (!authReady) return;
+    if (authEnabled() && !user) return;
     refresh();
-  }, [refresh]);
+  }, [authReady, user, refresh]);
 
   async function open(id) {
     try {
@@ -81,6 +110,18 @@ export default function App() {
     );
   }
 
+  if (!authReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-sm text-slate-400">
+        Loading…
+      </div>
+    );
+  }
+
+  if (authEnabled() && !user) {
+    return <SignIn />;
+  }
+
   if (view === "editor" && current) {
     return (
       <Editor
@@ -100,6 +141,8 @@ export default function App() {
       journeys={journeys}
       loading={loading}
       backendLabel={backendLabel}
+      userEmail={user?.email || null}
+      onSignOut={authEnabled() ? signOut : null}
       onOpen={open}
       onCreate={create}
       onRename={rename}
