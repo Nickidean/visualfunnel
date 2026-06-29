@@ -1,12 +1,21 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Plus,
+  GitFork,
+  Play,
+  Copy,
+  Check,
+  Pencil,
+  ChevronLeft,
+} from "lucide-react";
 import DeviceToggle from "./DeviceToggle";
 import Funnel from "./Funnel";
-import StepEditor from "./StepEditor";
+import StepForm from "./StepForm";
 import Lightbox from "./Lightbox";
 import PresentMode from "./PresentMode";
-import { buildViewModel, fmtNum, fmtPct } from "@/lib/compute";
+import { buildViewModel } from "@/lib/compute";
 import { exportJourneyText } from "@/lib/exportText";
 import { saveJourney, uploadScreenshot } from "@/lib/journeys";
 import * as ops from "@/lib/structureOps";
@@ -14,17 +23,17 @@ import * as ops from "@/lib/structureOps";
 export default function Editor({ initialJourney, onBack, onSaved }) {
   const [journey, setJourney] = useState(initialJourney);
   const [device, setDevice] = useState("desktop");
-  const [editingStepId, setEditingStepId] = useState(null);
+  const [form, setForm] = useState(null); // { mode, dest, fid, lid, stepId }
   const [lightbox, setLightbox] = useState(null);
-  const [presenting, setPresenting] = useState(false);
-  const [exportOpen, setExportOpen] = useState(false);
+  const [present, setPresent] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [editingName, setEditingName] = useState(false);
   const [saveState, setSaveState] = useState("saved"); // saved | saving | dirty
-  const [uploadBusy, setUploadBusy] = useState(false);
 
   const saveTimer = useRef(null);
   const firstRender = useRef(true);
 
-  // Debounced autosave whenever the journey changes.
+  // Debounced autosave.
   useEffect(() => {
     if (firstRender.current) {
       firstRender.current = false;
@@ -46,182 +55,205 @@ export default function Editor({ initialJourney, onBack, onSaved }) {
     return () => saveTimer.current && clearTimeout(saveTimer.current);
   }, [journey, onSaved]);
 
-  const vm = useMemo(() => buildViewModel(journey, device), [journey, device]);
+  // Editor keeps empty lanes so freshly-added lanes still show their "+ step".
+  const vm = useMemo(
+    () => buildViewModel(journey, device, { keepEmptyLanes: true }),
+    [journey, device]
+  );
 
   const apply = useCallback((fn) => {
     setJourney((j) => ({ ...j, structure: fn(j.structure) }));
   }, []);
 
-  // Locate the step currently being edited (anywhere in the structure).
-  const editingStep = useMemo(() => {
-    if (!editingStepId) return null;
-    for (const sec of journey.structure.sections) {
-      if (sec.type === "step" && sec.step.id === editingStepId) return sec.step;
-      if (sec.type === "fork") {
-        for (const lane of sec.lanes) {
-          const s = lane.steps.find((x) => x.id === editingStepId);
-          if (s) return s;
-        }
+  // Find a step anywhere by id (for edit-form initial values).
+  const findStep = useCallback(
+    (id) => {
+      for (const sec of journey.structure.sections) {
+        if (sec.type === "step" && sec.step.id === id) return sec.step;
+        if (sec.type === "fork")
+          for (const lane of sec.lanes) {
+            const s = lane.steps.find((x) => x.id === id);
+            if (s) return s;
+          }
       }
-    }
-    return null;
-  }, [editingStepId, journey]);
+      return null;
+    },
+    [journey]
+  );
 
   const actions = useMemo(
     () => ({
-      onEditStep: (id) => setEditingStepId(id),
+      onEditStep: (id) => setForm({ mode: "edit", stepId: id }),
       onMoveStep: (id, dir) => apply((s) => ops.moveStep(s, id, dir)),
+      onDeleteStep: (id) => apply((s) => ops.deleteStep(s, id)),
       onLightbox: (src, alt) => setLightbox({ src, alt }),
-      onAddStepToLane: (forkId, laneId) =>
-        apply((s) => ops.addStepToLane(s, forkId, laneId)),
-      onAddLane: (forkId) => apply((s) => ops.addLane(s, forkId)),
-      onRemoveLane: (forkId, laneId) =>
-        apply((s) => ops.removeLane(s, forkId, laneId)),
-      onRenameLane: (forkId, laneId, name) =>
-        apply((s) => ops.renameLane(s, forkId, laneId, name)),
-      onRemoveFork: (forkId) => apply((s) => ops.removeFork(s, forkId)),
+      onAddSharedStep: () => setForm({ mode: "add", dest: "shared" }),
+      onAddLaneStep: (fid, lid) =>
+        setForm({ mode: "add", dest: "lane", fid, lid }),
+      onAddLane: (fid) => apply((s) => ops.addLane(s, fid)),
+      onRemoveLane: (fid, lid) => apply((s) => ops.removeLane(s, fid, lid)),
+      onRenameLane: (fid, lid, name) =>
+        apply((s) => ops.renameLane(s, fid, lid, name)),
+      onRemoveFork: (fid) => apply((s) => ops.removeFork(s, fid)),
     }),
     [apply]
   );
 
-  async function handleUpload(file) {
-    if (!editingStepId) return;
-    setUploadBusy(true);
-    try {
-      const url = await uploadScreenshot(file, journey.id);
-      apply((s) => ops.updateStep(s, editingStepId, { screenshotUrl: url }));
-    } catch (e) {
-      console.error("Upload failed", e);
-      window.alert("Screenshot upload failed. See console for details.");
-    } finally {
-      setUploadBusy(false);
+  function handleSaveForm(stepData) {
+    if (form.mode === "edit") {
+      apply((s) => ops.updateStep(s, form.stepId, stepData));
+    } else if (form.dest === "shared") {
+      apply((s) => ops.addStepSection(s, stepData));
+    } else {
+      apply((s) => ops.addStepToLane(s, form.fid, form.lid, stepData));
     }
+    setForm(null);
   }
 
-  const exportText = useMemo(
-    () => (exportOpen ? exportJourneyText(journey, device) : ""),
-    [exportOpen, journey, device]
-  );
+  function exportOutline() {
+    const text = exportJourneyText(journey, device);
+    navigator.clipboard?.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  }
+
+  const overall = vm.conversion;
+  const hasNumbers = vm.firstValue != null;
 
   return (
-    <div className="min-h-screen">
-      {/* Top bar */}
-      <div className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-3 px-6 py-3">
-          <button
-            className="rounded-md px-2 py-1 text-sm text-slate-600 hover:bg-slate-100"
-            onClick={onBack}
-          >
-            ← Library
-          </button>
-          <input
-            className="min-w-0 flex-1 rounded-md border border-transparent px-2 py-1 text-lg font-semibold hover:border-slate-200 focus:border-slate-300"
-            value={journey.name}
-            onChange={(e) =>
-              setJourney((j) => ({ ...j, name: e.target.value }))
-            }
-            aria-label="Journey name"
-          />
-          <span className="text-xs text-slate-400">
-            {saveState === "saving"
-              ? "Saving…"
-              : saveState === "dirty"
-              ? "Unsaved…"
-              : "Saved"}
-          </span>
-          <DeviceToggle value={device} onChange={setDevice} size="sm" />
-          <button
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100"
-            onClick={() => setExportOpen(true)}
-          >
-            Export
-          </button>
-          <button
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500"
-            onClick={() => setPresenting(true)}
-          >
-            Present
-          </button>
+    <div className="min-h-screen bg-slate-50 text-slate-800 p-4 sm:p-6">
+      <div className="max-w-full mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between gap-3 mb-1 flex-wrap">
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              onClick={onBack}
+              className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 shrink-0"
+            >
+              <ChevronLeft size={16} /> Library
+            </button>
+            {editingName ? (
+              <input
+                autoFocus
+                value={journey.name}
+                onChange={(e) =>
+                  setJourney((j) => ({ ...j, name: e.target.value }))
+                }
+                onBlur={() => setEditingName(false)}
+                onKeyDown={(e) => e.key === "Enter" && setEditingName(false)}
+                className="text-2xl font-bold bg-white border border-slate-300 rounded-lg px-2 py-1"
+              />
+            ) : (
+              <h1 className="text-2xl font-bold flex items-center gap-2 group min-w-0">
+                <span className="truncate">{journey.name}</span>
+                <button
+                  onClick={() => setEditingName(true)}
+                  className="text-slate-300 group-hover:text-slate-500 shrink-0"
+                  aria-label="Rename journey"
+                >
+                  <Pencil size={16} />
+                </button>
+              </h1>
+            )}
+          </div>
+
+          <div className="flex gap-2 shrink-0 flex-wrap items-center">
+            <span className="text-xs text-slate-400 mr-1">
+              {saveState === "saving"
+                ? "Saving…"
+                : saveState === "dirty"
+                ? "Unsaved…"
+                : "Saved"}
+            </span>
+            <DeviceToggle value={device} onChange={setDevice} size="sm" />
+            <button
+              onClick={() => setPresent(true)}
+              disabled={vm.columns.length === 0}
+              className="flex items-center gap-1.5 text-sm bg-slate-800 hover:bg-slate-900 disabled:opacity-40 text-white rounded-lg px-3 py-2 font-medium"
+            >
+              <Play size={15} /> Present
+            </button>
+            <button
+              onClick={exportOutline}
+              className="flex items-center gap-1.5 text-sm bg-white border border-slate-300 hover:border-slate-400 rounded-lg px-3 py-2"
+            >
+              {copied ? (
+                <Check size={15} className="text-emerald-600" />
+              ) : (
+                <Copy size={15} />
+              )}
+              {copied ? "Copied" : "Export"}
+            </button>
+            <button
+              onClick={() => apply((s) => ops.addForkSection(s))}
+              className="flex items-center gap-1.5 text-sm bg-white border border-slate-300 hover:border-slate-400 rounded-lg px-3 py-2"
+            >
+              <GitFork size={15} /> Add branch
+            </button>
+            <button
+              onClick={() => setForm({ mode: "add", dest: "shared" })}
+              className="flex items-center gap-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-3 py-2 font-medium"
+            >
+              <Plus size={16} /> Add step
+            </button>
+          </div>
         </div>
+
+        {/* Subtitle */}
+        <p className="text-slate-500 text-sm mb-5">
+          {journey.structure.sections.length === 0 ? (
+            "Add screens to build your journey"
+          ) : (
+            <>
+              journey flows left to right
+              {overall != null && (
+                <>
+                  {" "}
+                  · <span className="font-semibold text-slate-700">
+                    {Math.round(overall * 100)}%
+                  </span>{" "}
+                  overall conversion
+                </>
+              )}
+              {!hasNumbers && " · add visitor numbers to see the funnel"}
+              {" · "}
+              <span className="text-slate-400">
+                {device === "combined"
+                  ? "combined (desktop + mobile)"
+                  : `${device} view`}
+              </span>
+            </>
+          )}
+        </p>
+
+        {/* Empty state */}
+        {journey.structure.sections.length === 0 ? (
+          <button
+            onClick={() => setForm({ mode: "add", dest: "shared" })}
+            className="w-full max-w-5xl border-2 border-dashed border-slate-300 rounded-2xl py-16 text-slate-400 hover:border-indigo-400 hover:text-indigo-500 flex flex-col items-center gap-2"
+          >
+            <Plus size={28} />
+            <span className="font-medium">Add your first screen</span>
+          </button>
+        ) : (
+          <Funnel vm={vm} editable actions={actions} />
+        )}
+
+        <p className="text-xs text-slate-400 mt-4">
+          Saved to {journey.id ? "your library" : "this session"}. Use Export to
+          copy a text outline. Present walks the journey full-size; links open in
+          a new tab.
+        </p>
       </div>
 
-      {/* Conversion summary */}
-      <div className="mx-auto max-w-[1400px] px-6 pt-5">
-        <div className="flex flex-wrap items-center gap-x-8 gap-y-2 rounded-lg border border-slate-200 bg-white px-5 py-3">
-          <Stat label="Entered" value={fmtNum(vm.firstValue)} />
-          <Stat label="Completed" value={fmtNum(vm.lastValue)} />
-          <Stat
-            label="Overall conversion"
-            value={fmtPct(vm.conversion)}
-            strong
-          />
-          <span className="ml-auto text-xs text-slate-400">
-            {device === "combined"
-              ? "Combined = desktop + mobile per step"
-              : `${device[0].toUpperCase()}${device.slice(1)} numbers`}
-          </span>
-        </div>
-      </div>
-
-      {/* Funnel */}
-      <div className="mx-auto max-w-[1400px] px-6 py-6">
-        <Funnel
-          vm={vm}
-          device={device}
-          editable
-          actions={actions}
-        />
-
-        <div className="mt-4 flex gap-2">
-          <button
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm hover:bg-slate-100"
-            onClick={() => apply((s) => ops.addStepSection(s))}
-          >
-            + Add step
-          </button>
-          <button
-            className="rounded-md border border-violet-300 bg-white px-3 py-2 text-sm text-violet-700 hover:bg-violet-50"
-            onClick={() => apply((s) => ops.addForkSection(s))}
-          >
-            + Add fork
-          </button>
-        </div>
-      </div>
-
-      {/* Step editor drawer */}
-      {editingStep && (
-        <StepEditor
-          step={editingStep}
-          busy={uploadBusy}
-          onClose={() => setEditingStepId(null)}
-          onField={(field, value) =>
-            apply((s) => ops.updateStep(s, editingStepId, { [field]: value }))
-          }
-          onData={(dev, value) =>
-            apply((s) =>
-              ops.updateStep(s, editingStepId, {
-                data: { ...editingStep.data, [dev]: value },
-              })
-            )
-          }
-          onAvailability={(value) =>
-            apply((s) => ops.updateStep(s, editingStepId, { availability: value }))
-          }
-          onUploadScreenshot={handleUpload}
-          onClearScreenshot={() =>
-            apply((s) => ops.updateStep(s, editingStepId, { screenshotUrl: null }))
-          }
-          onAddLink={() => apply((s) => ops.addLink(s, editingStepId))}
-          onUpdateLink={(linkId, patch) =>
-            apply((s) => ops.updateLink(s, editingStepId, linkId, patch))
-          }
-          onRemoveLink={(linkId) =>
-            apply((s) => ops.removeLink(s, editingStepId, linkId))
-          }
-          onDelete={() => {
-            apply((s) => ops.deleteStep(s, editingStepId));
-            setEditingStepId(null);
-          }}
+      {form && (
+        <StepForm
+          mode={form.mode}
+          dest={form.dest}
+          initial={form.mode === "edit" ? findStep(form.stepId) : null}
+          uploadScreenshot={(file) => uploadScreenshot(file, journey.id)}
+          onCancel={() => setForm(null)}
+          onSave={handleSaveForm}
         />
       )}
 
@@ -233,92 +265,14 @@ export default function Editor({ initialJourney, onBack, onSaved }) {
         />
       )}
 
-      {presenting && (
+      {present && (
         <PresentMode
           journey={journey}
           device={device}
           onDeviceChange={setDevice}
-          onClose={() => setPresenting(false)}
+          onClose={() => setPresent(false)}
         />
       )}
-
-      {exportOpen && (
-        <ExportModal text={exportText} onClose={() => setExportOpen(false)} name={journey.name} />
-      )}
-    </div>
-  );
-}
-
-function Stat({ label, value, strong }) {
-  return (
-    <div>
-      <div className="text-[11px] uppercase tracking-wide text-slate-400">
-        {label}
-      </div>
-      <div
-        className={`tabular-nums ${
-          strong ? "text-xl font-bold text-blue-600" : "text-lg font-semibold"
-        }`}
-      >
-        {value}
-      </div>
-    </div>
-  );
-}
-
-function ExportModal({ text, name, onClose }) {
-  const [copied, setCopied] = useState(false);
-  function copy() {
-    navigator.clipboard?.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
-  }
-  function download() {
-    const blob = new Blob([text], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${name.replace(/[^\w]+/g, "-").toLowerCase()}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6"
-      onClick={onClose}
-    >
-      <div
-        className="flex max-h-[80vh] w-full max-w-2xl flex-col rounded-xl bg-white shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
-          <h2 className="font-semibold">Export outline</h2>
-          <button
-            className="rounded px-2 py-1 text-sm text-slate-500 hover:bg-slate-100"
-            onClick={onClose}
-          >
-            ✕
-          </button>
-        </div>
-        <pre className="flex-1 overflow-auto whitespace-pre-wrap px-5 py-4 text-xs text-slate-700">
-          {text}
-        </pre>
-        <div className="flex justify-end gap-2 border-t border-slate-200 px-5 py-3">
-          <button
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100"
-            onClick={download}
-          >
-            Download .txt
-          </button>
-          <button
-            className="rounded-md bg-slate-900 px-3 py-1.5 text-sm text-white hover:bg-slate-700"
-            onClick={copy}
-          >
-            {copied ? "Copied!" : "Copy"}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

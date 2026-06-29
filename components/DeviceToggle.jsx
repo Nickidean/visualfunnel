@@ -24,7 +24,7 @@ export default function DeviceToggle({ value, onChange, size = "md" }) {
             onClick={() => onChange(opt.value)}
             className={`${pad} rounded-md font-medium transition ${
               active
-                ? "bg-slate-900 text-white"
+                ? "bg-indigo-600 text-white"
                 : "text-slate-600 hover:bg-slate-100"
             }`}
           >

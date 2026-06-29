@@ -1,211 +1,215 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import {
+  X,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  Image as ImageIcon,
+} from "lucide-react";
 import DeviceToggle from "./DeviceToggle";
-import { buildViewModel, fmtNum, fmtPct } from "@/lib/compute";
+import { buildViewModel } from "@/lib/compute";
 
-// Flatten the view-model into an ordered list of present-mode slides.
-// At a fork, each lane is walked in turn with its name shown.
-function buildSlides(vm) {
-  const slides = [];
+// Flatten the device view-model into ordered present-mode frames. At a fork,
+// each lane is walked in turn; the first lane step carries its traffic share,
+// and within a lane drop-off is computed lane-relative.
+function buildFrames(vm) {
+  const frames = [];
   for (const col of vm.columns) {
     if (col.kind === "step") {
-      slides.push({
+      frames.push({
         step: col.step,
-        title: col.step.title,
+        lane: null,
         value: col.flow,
         retention: col.retention,
-        drop: col.drop,
-        laneName: null,
+        drop: col.drop && col.drop.abs > 0 ? col.drop.pct : null,
         share: null,
       });
-    } else if (col.kind === "fork") {
+    } else {
       for (const lane of col.lanes) {
-        lane.steps.forEach((ls, i) => {
-          slides.push({
+        let prev = null;
+        lane.steps.forEach((ls, k) => {
+          const drop =
+            k > 0 && prev != null && ls.value != null && prev > ls.value
+              ? (prev - ls.value) / prev
+              : null;
+          frames.push({
             step: ls.step,
-            title: ls.step.title,
+            lane: lane.name,
             value: ls.value,
             retention: ls.retention,
-            drop: null,
-            laneName: lane.name,
-            share: i === 0 ? lane.share : null,
+            drop,
+            share: k === 0 ? lane.share : null,
           });
+          if (ls.value != null) prev = ls.value;
         });
       }
     }
   }
-  return slides;
+  return frames;
 }
 
 export default function PresentMode({ journey, device, onDeviceChange, onClose }) {
   const vm = useMemo(() => buildViewModel(journey, device), [journey, device]);
-  const slides = useMemo(() => buildSlides(vm), [vm]);
-  const [index, setIndex] = useState(0);
-
-  const clamped = Math.min(index, Math.max(0, slides.length - 1));
+  const frames = useMemo(() => buildFrames(vm), [vm]);
+  const [idx, setIdx] = useState(0);
+  const clamped = Math.min(idx, Math.max(0, frames.length - 1));
 
   useEffect(() => {
-    function onKey(e) {
+    const onKey = (e) => {
       if (e.key === "Escape") onClose();
-      else if (e.key === "ArrowRight")
-        setIndex((i) => Math.min(i + 1, slides.length - 1));
-      else if (e.key === "ArrowLeft") setIndex((i) => Math.max(i - 1, 0));
-    }
+      if (e.key === "ArrowRight")
+        setIdx((i) => Math.min(i + 1, frames.length - 1));
+      if (e.key === "ArrowLeft") setIdx((i) => Math.max(i - 1, 0));
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [slides.length, onClose]);
+  }, [frames.length, onClose]);
 
-  // Keep index in range when the device view changes the slide count.
   useEffect(() => {
-    setIndex((i) => Math.min(i, Math.max(0, slides.length - 1)));
-  }, [slides.length]);
+    setIdx((i) => Math.min(i, Math.max(0, frames.length - 1)));
+  }, [frames.length]);
 
-  const slide = slides[clamped];
+  const f = frames[clamped];
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-slate-950 text-white">
-      {/* Top controls */}
-      <div className="flex items-center justify-between gap-3 px-6 py-3">
-        <div className="truncate text-sm text-slate-300">{journey.name}</div>
+    <div className="fixed inset-0 bg-slate-900 text-white flex flex-col z-50">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 gap-3">
+        <div className="text-sm text-white/60 truncate">{journey.name}</div>
         <div className="flex items-center gap-3">
           <DeviceToggle value={device} onChange={onDeviceChange} size="sm" />
+          <div className="text-sm text-white/60 hidden sm:block">
+            {frames.length ? `${clamped + 1} / ${frames.length}` : "0 / 0"}
+          </div>
           <button
-            className="rounded-md bg-white/10 px-3 py-1.5 text-sm hover:bg-white/20"
             onClick={onClose}
+            className="text-white/60 hover:text-white flex items-center gap-1.5 text-sm"
           >
-            Exit ✕
+            <X size={18} /> Exit
           </button>
         </div>
       </div>
 
-      {/* Body */}
-      {!slide ? (
-        <div className="flex flex-1 items-center justify-center text-slate-400">
+      {!f ? (
+        <div className="flex-1 flex items-center justify-center text-white/40">
           No steps to present in this device view.
         </div>
       ) : (
-        <div className="grid flex-1 grid-cols-1 gap-6 overflow-hidden px-6 pb-4 lg:grid-cols-[1.6fr_1fr]">
-          {/* Screenshot */}
-          <div className="flex min-h-0 items-center justify-center">
-            {slide.step.screenshotUrl ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
+        <div className="flex-1 flex flex-col lg:flex-row items-center gap-8 p-6 lg:p-12 overflow-auto">
+          <div className="flex-1 w-full flex items-center justify-center min-h-0">
+            {f.step.screenshotUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={slide.step.screenshotUrl}
-                alt={slide.title}
-                className="max-h-full max-w-full rounded-lg object-contain shadow-2xl"
+                src={f.step.screenshotUrl}
+                alt={f.step.title}
+                className="max-w-full max-h-full rounded-xl shadow-2xl object-contain"
+                style={{ maxHeight: "70vh" }}
               />
             ) : (
-              <div className="flex h-64 w-full items-center justify-center rounded-lg border border-dashed border-white/20 text-slate-500">
-                No screenshot
+              <div className="w-full max-w-lg aspect-video rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/30">
+                <ImageIcon size={48} />
               </div>
             )}
           </div>
 
-          {/* Detail panel */}
-          <div className="flex min-h-0 flex-col overflow-y-auto">
-            {slide.laneName && (
-              <div className="mb-2 inline-flex w-fit items-center gap-2 rounded-full bg-violet-500/20 px-3 py-1 text-sm text-violet-200">
-                Lane: {slide.laneName}
-                {slide.share !== null && slide.share !== undefined && (
-                  <span className="font-semibold">{fmtPct(slide.share)}</span>
-                )}
-              </div>
+          <div className="w-full lg:w-96 shrink-0">
+            {f.lane && (
+              <span className="inline-block text-xs font-semibold bg-indigo-500/20 text-indigo-300 rounded-full px-3 py-1 mb-3">
+                {f.lane}
+              </span>
             )}
-            <h2 className="text-3xl font-bold">{slide.title}</h2>
+            <h2 className="text-3xl font-bold mb-4">{f.step.title}</h2>
 
-            <div className="mt-4 flex flex-wrap gap-x-8 gap-y-2">
-              <div>
-                <div className="text-[11px] uppercase tracking-wide text-slate-400">
-                  Visitors ({device})
-                </div>
-                <div className="text-2xl font-bold tabular-nums">
-                  {fmtNum(slide.value)}
-                </div>
-              </div>
-              {slide.retention !== null && slide.retention !== undefined && (
+            <div className="flex items-end gap-6 mb-5 flex-wrap">
+              {f.value != null && (
                 <div>
-                  <div className="text-[11px] uppercase tracking-wide text-slate-400">
-                    Retained
+                  <div className="text-3xl font-bold tabular-nums">
+                    {f.value.toLocaleString()}
                   </div>
-                  <div className="text-2xl font-bold tabular-nums">
-                    {fmtPct(slide.retention)}
+                  <div className="text-xs text-white/50 mt-1">
+                    visitors ({device})
+                    {f.retention != null
+                      ? ` · ${Math.round(f.retention * 100)}% of start`
+                      : ""}
                   </div>
                 </div>
               )}
-              {slide.drop && (
+              {f.share != null && (
                 <div>
-                  <div className="text-[11px] uppercase tracking-wide text-slate-400">
-                    Drop-off
+                  <div className="text-2xl font-bold text-indigo-300">
+                    {Math.round(f.share * 100)}%
                   </div>
-                  <div className="text-2xl font-bold tabular-nums text-red-300">
-                    −{fmtNum(Math.abs(slide.drop.abs))} ({fmtPct(slide.drop.pct)})
+                  <div className="text-xs text-white/50 mt-1">took this path</div>
+                </div>
+              )}
+              {f.drop != null && (
+                <div>
+                  <div className="text-2xl font-bold text-rose-400">
+                    ↓{Math.round(f.drop * 100)}%
                   </div>
+                  <div className="text-xs text-white/50 mt-1">drop-off</div>
                 </div>
               )}
             </div>
 
-            {/* Notes */}
-            {slide.step.notes && slide.step.notes.trim() && (
-              <div className="mt-6">
-                <div className="text-[11px] uppercase tracking-wide text-slate-400">
-                  Notes
-                </div>
-                <p className="mt-1 whitespace-pre-wrap text-slate-200">
-                  {slide.step.notes}
-                </p>
-              </div>
+            {f.step.notes && f.step.notes.trim() && (
+              <p className="text-white/80 leading-relaxed mb-5 whitespace-pre-wrap">
+                {f.step.notes}
+              </p>
             )}
 
-            {/* Links */}
-            {(slide.step.links || []).some((l) => l.url) && (
-              <div className="mt-6">
-                <div className="text-[11px] uppercase tracking-wide text-slate-400">
-                  Links
-                </div>
-                <ul className="mt-1 space-y-1">
-                  {slide.step.links
-                    .filter((l) => l.url)
-                    .map((l) => (
-                      <li key={l.id}>
-                        <a
-                          href={l.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-300 underline hover:text-blue-200"
-                        >
-                          {l.label || l.url}
-                        </a>
-                      </li>
-                    ))}
-                </ul>
+            {f.step.links && f.step.links.some((l) => l.url) && (
+              <div className="space-y-2">
+                {f.step.links
+                  .filter((l) => l.url)
+                  .map((l) => (
+                    <a
+                      key={l.id}
+                      href={l.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2.5 text-sm transition"
+                    >
+                      <ExternalLink size={15} className="text-indigo-300 shrink-0" />
+                      <span className="truncate">{l.label || l.url}</span>
+                    </a>
+                  ))}
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* Bottom nav */}
-      <div className="flex items-center justify-between gap-3 border-t border-white/10 px-6 py-3">
+      <div className="flex items-center justify-center gap-4 px-6 py-5 border-t border-white/10">
         <button
-          className="rounded-md bg-white/10 px-4 py-2 text-sm hover:bg-white/20 disabled:opacity-30"
-          onClick={() => setIndex((i) => Math.max(i - 1, 0))}
+          onClick={() => setIdx((i) => Math.max(i - 1, 0))}
           disabled={clamped === 0}
+          className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 disabled:opacity-30 rounded-lg px-5 py-2.5 font-medium"
         >
-          ← Previous
+          <ChevronLeft size={18} /> Back
         </button>
-        <div className="text-sm text-slate-400">
-          {slides.length ? `${clamped + 1} / ${slides.length}` : "0 / 0"}
-          <span className="ml-2 hidden sm:inline">
-            (arrow keys to navigate, Esc to exit)
-          </span>
+        <div className="flex gap-1.5 flex-wrap max-w-xs justify-center">
+          {frames.map((_, k) => (
+            <button
+              key={k}
+              onClick={() => setIdx(k)}
+              aria-label={`Go to step ${k + 1}`}
+              className="rounded-full transition-all"
+              style={{
+                width: k === clamped ? "24px" : "8px",
+                height: "8px",
+                background: k === clamped ? "#818cf8" : "rgba(255,255,255,.25)",
+              }}
+            />
+          ))}
         </div>
         <button
-          className="rounded-md bg-white/10 px-4 py-2 text-sm hover:bg-white/20 disabled:opacity-30"
-          onClick={() => setIndex((i) => Math.min(i + 1, slides.length - 1))}
-          disabled={clamped >= slides.length - 1}
+          onClick={() => setIdx((i) => Math.min(i + 1, frames.length - 1))}
+          disabled={clamped >= frames.length - 1}
+          className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-30 rounded-lg px-5 py-2.5 font-medium"
         >
-          Next →
+          Next <ChevronRight size={18} />
         </button>
       </div>
     </div>

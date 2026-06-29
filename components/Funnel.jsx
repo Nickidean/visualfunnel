@@ -1,179 +1,203 @@
 "use client";
 
+import React from "react";
+import { GitFork, GitMerge, Trash2, Plus } from "lucide-react";
 import StepCard from "./StepCard";
-import { fmtNum, fmtPct } from "@/lib/compute";
 
-function DropChip({ drop }) {
-  if (!drop) return <div className="w-6 shrink-0" />;
-  const positive = drop.abs > 0;
-  return (
-    <div className="flex w-16 shrink-0 flex-col items-center justify-center self-center text-center">
-      <div className="text-slate-300">→</div>
-      <div
-        className={`mt-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-          positive ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-600"
-        }`}
-        title="Drop-off from previous step"
-      >
-        {positive ? "−" : "+"}
-        {fmtNum(Math.abs(drop.abs))}
-      </div>
-      <div className="text-[10px] text-slate-400">{fmtPct(drop.pct)}</div>
-    </div>
-  );
+const Conn = ({ children }) => (
+  <div className="flex flex-col items-center justify-center shrink-0 px-1 self-center">
+    {children || <span className="text-slate-300 text-xl">→</span>}
+  </div>
+);
+
+function dropChip(prevVal, val) {
+  if (prevVal != null && val != null && prevVal !== 0 && prevVal > val) {
+    return (
+      <span className="text-rose-600 text-xs font-medium whitespace-nowrap">
+        ↓{Math.round(((prevVal - val) / prevVal) * 100)}%
+      </span>
+    );
+  }
+  return null;
 }
 
-function ForkBlock({ col, device, editable, actions }) {
+export default function Funnel({ vm, editable = false, actions = {} }) {
+  const cols = vm.columns;
+  const stepCols = cols.filter((c) => c.kind === "step");
+  const firstStepId = stepCols[0]?.step.id;
+  const lastStepId = stepCols[stepCols.length - 1]?.step.id;
+
   return (
-    <div className="shrink-0 rounded-xl border border-dashed border-violet-300 bg-violet-50/40 p-3">
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <span className="text-xs font-semibold uppercase tracking-wide text-violet-600">
-          Fork
-        </span>
+    <div className="overflow-x-auto pb-4 funnel-rail">
+      <div className="flex items-start gap-1" style={{ minWidth: "min-content" }}>
+        {cols.map((col, i) => (
+          <React.Fragment key={col.kind === "step" ? col.step.id : col.id}>
+            {i > 0 && (
+              <Conn>
+                {col.kind === "fork" ? (
+                  <span className="text-indigo-400" title="splits">
+                    <GitFork size={18} />
+                  </span>
+                ) : cols[i - 1].kind === "fork" ? (
+                  <span className="text-indigo-400" title="rejoins">
+                    <GitMerge size={18} />
+                  </span>
+                ) : (
+                  dropChip(cols[i - 1].flow, col.flow)
+                )}
+              </Conn>
+            )}
+
+            {col.kind === "step" ? (
+              <div className="pt-1">
+                <StepCard
+                  step={col.step}
+                  value={col.flow}
+                  retention={col.retention}
+                  editable={editable}
+                  onEdit={() => actions.onEditStep(col.step.id)}
+                  onMoveL={
+                    editable && col.step.id !== firstStepId
+                      ? () => actions.onMoveStep(col.step.id, "left")
+                      : undefined
+                  }
+                  onMoveR={
+                    editable && col.step.id !== lastStepId
+                      ? () => actions.onMoveStep(col.step.id, "right")
+                      : undefined
+                  }
+                  onDel={() => actions.onDeleteStep(col.step.id)}
+                  onLightbox={actions.onLightbox}
+                />
+              </div>
+            ) : (
+              <div className="bg-indigo-50/60 border border-indigo-100 rounded-2xl p-3 shrink-0">
+                <div className="flex items-center justify-between mb-2 px-1">
+                  <span className="text-xs font-semibold text-indigo-500 flex items-center gap-1">
+                    <GitFork size={13} /> Branches
+                  </span>
+                  {editable && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => actions.onAddLane(col.id)}
+                        className="text-xs text-indigo-500 hover:text-indigo-700 font-medium"
+                      >
+                        + lane
+                      </button>
+                      <button
+                        onClick={() => actions.onRemoveFork(col.id)}
+                        className="text-slate-300 hover:text-rose-500"
+                        aria-label="Remove fork"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  {col.lanes.map((lane) => (
+                    <div key={lane.id} className="flex items-stretch gap-2">
+                      <div className="w-28 shrink-0 bg-white rounded-xl border border-indigo-100 p-2 flex flex-col justify-center">
+                        {editable ? (
+                          <input
+                            value={lane.name}
+                            onChange={(e) =>
+                              actions.onRenameLane(col.id, lane.id, e.target.value)
+                            }
+                            className="font-semibold text-sm bg-transparent w-full outline-none focus:bg-slate-50 rounded px-1"
+                            aria-label="Lane name"
+                          />
+                        ) : (
+                          <span className="font-semibold text-sm px-1">
+                            {lane.name}
+                          </span>
+                        )}
+                        {lane.share != null && (
+                          <span className="text-xs text-slate-400 px-1 mt-0.5">
+                            {Math.round(lane.share * 100)}% of traffic
+                          </span>
+                        )}
+                        {editable && col.lanes.length > 1 && (
+                          <button
+                            onClick={() => actions.onRemoveLane(col.id, lane.id)}
+                            className="text-xs text-slate-300 hover:text-rose-500 px-1 mt-1 text-left"
+                          >
+                            remove lane
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex items-start gap-1">
+                        {lane.steps.map((ls, k) => (
+                          <React.Fragment key={ls.step.id}>
+                            {k > 0 && (
+                              <Conn>
+                                {dropChip(lane.steps[k - 1].value, ls.value)}
+                              </Conn>
+                            )}
+                            <StepCard
+                              step={ls.step}
+                              value={ls.value}
+                              retention={ls.retention}
+                              small
+                              editable={editable}
+                              onEdit={() => actions.onEditStep(ls.step.id)}
+                              onMoveL={
+                                editable && k > 0
+                                  ? () => actions.onMoveStep(ls.step.id, "left")
+                                  : undefined
+                              }
+                              onMoveR={
+                                editable && k < lane.steps.length - 1
+                                  ? () => actions.onMoveStep(ls.step.id, "right")
+                                  : undefined
+                              }
+                              onDel={() => actions.onDeleteStep(ls.step.id)}
+                              onLightbox={actions.onLightbox}
+                            />
+                          </React.Fragment>
+                        ))}
+                        {editable && (
+                          <button
+                            onClick={() => actions.onAddLaneStep(col.id, lane.id)}
+                            className="w-20 self-stretch border-2 border-dashed border-indigo-200 rounded-xl text-indigo-300 hover:text-indigo-500 hover:border-indigo-400 flex items-center justify-center shrink-0"
+                            style={{ minHeight: "120px" }}
+                            aria-label="Add step to lane"
+                          >
+                            <Plus size={18} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </React.Fragment>
+        ))}
+
         {editable && (
-          <div className="flex gap-1">
-            <button
-              className="rounded border border-violet-200 bg-white px-2 py-0.5 text-xs hover:bg-violet-50"
-              onClick={() => actions.onAddLane(col.id)}
-            >
-              + Lane
+          <>
+            <Conn />
+            <button onClick={actions.onAddSharedStep} className="pt-1 shrink-0">
+              <div
+                className="w-52 border-2 border-dashed border-slate-300 rounded-xl text-slate-300 hover:text-indigo-500 hover:border-indigo-400 flex flex-col items-center justify-center gap-1"
+                style={{ height: "190px" }}
+              >
+                <Plus size={22} />
+                <span className="text-xs font-medium">Add step</span>
+              </div>
             </button>
-            <button
-              className="rounded px-1.5 py-0.5 text-xs text-red-600 hover:bg-red-50"
-              onClick={() => actions.onRemoveFork(col.id)}
-            >
-              Remove fork
-            </button>
-          </div>
+          </>
         )}
       </div>
 
-      <div className="space-y-3">
-        {col.lanes.map((lane) => (
-          <div key={lane.id} className="rounded-lg bg-white/70 p-2">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                {editable ? (
-                  <input
-                    className="w-32 rounded border border-slate-300 px-2 py-0.5 text-sm font-medium"
-                    value={lane.name}
-                    onChange={(e) =>
-                      actions.onRenameLane(col.id, lane.id, e.target.value)
-                    }
-                    aria-label="Lane name"
-                  />
-                ) : (
-                  <span className="text-sm font-medium">{lane.name}</span>
-                )}
-                <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-medium text-violet-700">
-                  {lane.share !== null && lane.share !== undefined
-                    ? `${fmtPct(lane.share)} of traffic`
-                    : "—"}
-                </span>
-              </div>
-              {editable && (
-                <div className="flex gap-1">
-                  <button
-                    className="rounded border border-slate-200 bg-white px-2 py-0.5 text-xs hover:bg-slate-100"
-                    onClick={() => actions.onAddStepToLane(col.id, lane.id)}
-                  >
-                    + Step
-                  </button>
-                  <button
-                    className="rounded px-1.5 py-0.5 text-xs text-red-600 hover:bg-red-50 disabled:opacity-30"
-                    onClick={() => actions.onRemoveLane(col.id, lane.id)}
-                    aria-label="Remove lane"
-                  >
-                    ✕
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-stretch gap-2">
-              {lane.steps.map((ls, i) => (
-                <div key={ls.step.id} className="flex items-stretch">
-                  {i > 0 && <div className="w-3 self-center text-slate-300">→</div>}
-                  <StepCard
-                    step={ls.step}
-                    value={ls.value}
-                    retention={ls.retention}
-                    device={device}
-                    editable={editable}
-                    compact
-                    onEdit={() => actions.onEditStep(ls.step.id)}
-                    onMoveLeft={
-                      editable && i > 0
-                        ? () => actions.onMoveStep(ls.step.id, "left")
-                        : undefined
-                    }
-                    onMoveRight={
-                      editable && i < lane.steps.length - 1
-                        ? () => actions.onMoveStep(ls.step.id, "right")
-                        : undefined
-                    }
-                    onLightbox={actions.onLightbox}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export default function Funnel({ vm, device, editable = false, actions = {} }) {
-  if (!vm.columns.length) {
-    return (
-      <p className="py-12 text-center text-sm text-slate-400">
-        No steps in this device view yet.
-      </p>
-    );
-  }
-
-  // Count top-level step columns for move-button enabling.
-  const stepCols = vm.columns.filter((c) => c.kind === "step");
-
-  return (
-    <div className="funnel-rail overflow-x-auto pb-4">
-      <div className="flex items-stretch gap-0">
-        {vm.columns.map((col, idx) => (
-          <div key={col.kind === "step" ? col.step.id : col.id} className="flex">
-            {idx > 0 && <DropChip drop={col.drop} />}
-            {col.kind === "step" ? (
-              <StepCard
-                step={col.step}
-                value={col.flow}
-                retention={col.retention}
-                device={device}
-                editable={editable}
-                onEdit={() => actions.onEditStep(col.step.id)}
-                onMoveLeft={
-                  editable && stepCols[0]?.step.id !== col.step.id
-                    ? () => actions.onMoveStep(col.step.id, "left")
-                    : undefined
-                }
-                onMoveRight={
-                  editable &&
-                  stepCols[stepCols.length - 1]?.step.id !== col.step.id
-                    ? () => actions.onMoveStep(col.step.id, "right")
-                    : undefined
-                }
-                onLightbox={actions.onLightbox}
-              />
-            ) : (
-              <ForkBlock
-                col={col}
-                device={device}
-                editable={editable}
-                actions={actions}
-              />
-            )}
-          </div>
-        ))}
-      </div>
+      {cols.length === 0 && !editable && (
+        <p className="py-12 text-center text-sm text-slate-400">
+          No steps in this device view.
+        </p>
+      )}
     </div>
   );
 }
