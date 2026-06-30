@@ -35,7 +35,7 @@ function dropChipFromCol(col) {
   return null;
 }
 
-export default function Funnel({ vm, editable = false, actions = {} }) {
+export default function Funnel({ vm, editable = false, actions = {}, testCounts = {} }) {
   const cols = vm.columns;
   const stepCols = cols.filter((c) => c.kind === "step");
   const firstStepId = stepCols[0]?.step.id;
@@ -79,6 +79,8 @@ export default function Funnel({ vm, editable = false, actions = {} }) {
                   throughShare={col.throughShare}
                   bypass={col.bypass}
                   bypassShare={col.bypassShare}
+                  tests={testCounts[col.step.id]}
+                  onTests={() => actions.onStepTests?.(col.step.id)}
                   editable={editable}
                   onEdit={() => actions.onEditStep(col.step.id)}
                   onMoveL={
@@ -166,6 +168,8 @@ export default function Funnel({ vm, editable = false, actions = {} }) {
                               value={ls.value}
                               retention={ls.retention}
                               small
+                              tests={testCounts[ls.step.id]}
+                              onTests={() => actions.onStepTests?.(ls.step.id)}
                               editable={editable}
                               onEdit={() => actions.onEditStep(ls.step.id)}
                               onMoveL={

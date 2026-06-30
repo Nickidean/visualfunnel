@@ -8,8 +8,10 @@ import {
   Image as ImageIcon,
   FileText,
   Link as LinkIcon,
+  FlaskConical,
 } from "lucide-react";
 import { THUMB, PLACEHOLDER_ASPECT } from "@/lib/layout";
+import { badgeText } from "@/lib/tests";
 
 // A single step rendered in the funnel rail (prototype styling).
 // `value` and `retention` come pre-computed from the device view-model.
@@ -23,12 +25,15 @@ export default function StepCard({
   throughShare,
   bypass,
   bypassShare,
+  tests,
+  onTests,
   onEdit,
   onMoveL,
   onMoveR,
   onDel,
   onLightbox,
 }) {
+  const testBadge = badgeText(tests);
   // For an optional step the bar reflects how much of the incoming traffic
   // came through (throughShare); otherwise it's retention vs the first step.
   const r = optional ? throughShare : retention;
@@ -129,6 +134,16 @@ export default function StepCard({
               </span>
             )}
           </div>
+        )}
+
+        {testBadge && (
+          <button
+            onClick={onTests}
+            className="mt-2 inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-600 hover:bg-indigo-100"
+            title="View tests on this step"
+          >
+            <FlaskConical size={11} /> {testBadge}
+          </button>
         )}
 
         {editable && (
