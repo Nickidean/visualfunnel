@@ -19,22 +19,37 @@ export default function StepCard({
   retention,
   small,
   editable,
+  optional,
+  throughShare,
+  bypass,
+  bypassShare,
   onEdit,
   onMoveL,
   onMoveR,
   onDel,
   onLightbox,
 }) {
-  const r = retention;
+  // For an optional step the bar reflects how much of the incoming traffic
+  // came through (throughShare); otherwise it's retention vs the first step.
+  const r = optional ? throughShare : retention;
   const w = r != null ? Math.max(r * 100, 8) : 100;
   const hasLinks = step.links && step.links.some((l) => l.url);
   const hasNote = step.notes && step.notes.trim();
 
   return (
     <div
-      className="bg-white rounded-xl border border-slate-200 shadow-sm shrink-0"
+      className={`bg-white rounded-xl shadow-sm shrink-0 ${
+        optional
+          ? "border-2 border-dashed border-amber-300"
+          : "border border-slate-200"
+      }`}
       style={{ width: small ? THUMB.cardSmall : THUMB.card }}
     >
+      {optional && (
+        <div className="rounded-t-xl bg-amber-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700">
+          Optional step
+        </div>
+      )}
       {step.screenshotUrl ? (
         <button
           onClick={() => onLightbox?.(step.screenshotUrl, step.title)}
@@ -76,7 +91,9 @@ export default function StepCard({
             <span className="text-xs text-slate-300">no data</span>
           )}
           {r != null && (
-            <span className="text-xs text-slate-400">{Math.round(r * 100)}%</span>
+            <span className="text-xs text-slate-400">
+              {Math.round(r * 100)}%{optional ? " through" : ""}
+            </span>
           )}
         </div>
 
@@ -87,11 +104,20 @@ export default function StepCard({
               width: `${w}%`,
               background:
                 value != null
-                  ? "linear-gradient(90deg,#6366f1,#818cf8)"
+                  ? optional
+                    ? "linear-gradient(90deg,#f59e0b,#fbbf24)"
+                    : "linear-gradient(90deg,#6366f1,#818cf8)"
                   : "#e2e8f0",
             }}
           />
         </div>
+
+        {optional && bypass != null && (
+          <div className="mt-1.5 text-[11px] text-amber-700">
+            ↳ {bypass.toLocaleString()} skipped
+            {bypassShare != null ? ` (${Math.round(bypassShare * 100)}%)` : ""}
+          </div>
+        )}
 
         {(hasNote || hasLinks) && (
           <div className="flex items-center gap-2 mt-2 text-slate-400">

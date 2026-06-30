@@ -28,16 +28,35 @@ function dropLabel(prevVal, val) {
   return null;
 }
 
+function dropLabelFromCol(col) {
+  const d = col.drop;
+  if (d && d.abs > 0) {
+    return (
+      <span className="text-rose-400 text-sm font-semibold px-1 self-center">
+        ↓{Math.round((d.pct || 0) * 100)}%
+      </span>
+    );
+  }
+  return null;
+}
+
 // A large, clickable step tile: fixed width, natural height (full screenshot).
-function Tile({ step, value, retention, onPick, small }) {
-  const r = retention;
+function Tile({ step, value, retention, onPick, small, optional, throughShare, bypass, bypassShare }) {
+  const r = optional ? throughShare : retention;
   const w = r != null ? Math.max(r * 100, 8) : 100;
   return (
     <button
       onClick={onPick}
-      className="text-left bg-white rounded-xl shadow-lg overflow-hidden shrink-0 hover:ring-2 hover:ring-indigo-400 transition"
+      className={`text-left bg-white rounded-xl shadow-lg overflow-hidden shrink-0 hover:ring-2 hover:ring-indigo-400 transition ${
+        optional ? "ring-2 ring-amber-300" : ""
+      }`}
       style={{ width: small ? THUMB.boardSmall : THUMB.board }}
     >
+      {optional && (
+        <div className="bg-amber-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700">
+          Optional step
+        </div>
+      )}
       {step.screenshotUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -64,7 +83,9 @@ function Tile({ step, value, retention, onPick, small }) {
             <span className="text-xs text-slate-300">no data</span>
           )}
           {r != null && (
-            <span className="text-xs text-slate-400">{Math.round(r * 100)}%</span>
+            <span className="text-xs text-slate-400">
+              {Math.round(r * 100)}%{optional ? " through" : ""}
+            </span>
           )}
         </div>
         <div className="h-2 mt-1.5">
@@ -74,11 +95,19 @@ function Tile({ step, value, retention, onPick, small }) {
               width: `${w}%`,
               background:
                 value != null
-                  ? "linear-gradient(90deg,#6366f1,#818cf8)"
+                  ? optional
+                    ? "linear-gradient(90deg,#f59e0b,#fbbf24)"
+                    : "linear-gradient(90deg,#6366f1,#818cf8)"
                   : "#e2e8f0",
             }}
           />
         </div>
+        {optional && bypass != null && (
+          <div className="mt-1.5 text-[11px] text-amber-700">
+            ↳ {bypass.toLocaleString()} skipped
+            {bypassShare != null ? ` (${Math.round(bypassShare * 100)}%)` : ""}
+          </div>
+        )}
       </div>
     </button>
   );
@@ -252,8 +281,12 @@ export default function PresentBoard({ vm, onPick }) {
                     <span className="text-indigo-300 self-center px-1">
                       <GitMerge size={22} />
                     </span>
+                  ) : col.optional ? (
+                    <span className="text-amber-300 text-xs font-semibold self-center px-1 whitespace-nowrap">
+                      ⤴ optional
+                    </span>
                   ) : (
-                    dropLabel(cols[i - 1].flow, col.flow) || ARROW
+                    dropLabelFromCol(col) || ARROW
                   ))}
 
                 {col.kind === "step" ? (
@@ -262,6 +295,10 @@ export default function PresentBoard({ vm, onPick }) {
                       step={col.step}
                       value={col.flow}
                       retention={col.retention}
+                      optional={col.optional}
+                      throughShare={col.throughShare}
+                      bypass={col.bypass}
+                      bypassShare={col.bypassShare}
                       onPick={() => pick(col.step.id)}
                     />
                   </div>

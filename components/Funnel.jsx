@@ -21,6 +21,20 @@ function dropChip(prevVal, val) {
   return null;
 }
 
+// Drop chip from a column's pre-computed drop (which already measures around
+// optional steps), so the figure after an optional detour is right.
+function dropChipFromCol(col) {
+  const d = col.drop;
+  if (d && d.abs > 0) {
+    return (
+      <span className="text-rose-600 text-xs font-medium whitespace-nowrap">
+        ↓{Math.round((d.pct || 0) * 100)}%
+      </span>
+    );
+  }
+  return null;
+}
+
 export default function Funnel({ vm, editable = false, actions = {} }) {
   const cols = vm.columns;
   const stepCols = cols.filter((c) => c.kind === "step");
@@ -42,8 +56,15 @@ export default function Funnel({ vm, editable = false, actions = {} }) {
                   <span className="text-indigo-400" title="rejoins">
                     <GitMerge size={18} />
                   </span>
+                ) : col.optional ? (
+                  <span
+                    className="text-amber-500 text-[11px] font-semibold whitespace-nowrap"
+                    title="Optional / exception step — some users take this detour"
+                  >
+                    ⤴ optional
+                  </span>
                 ) : (
-                  dropChip(cols[i - 1].flow, col.flow)
+                  dropChipFromCol(col)
                 )}
               </Conn>
             )}
@@ -54,6 +75,10 @@ export default function Funnel({ vm, editable = false, actions = {} }) {
                   step={col.step}
                   value={col.flow}
                   retention={col.retention}
+                  optional={col.optional}
+                  throughShare={col.throughShare}
+                  bypass={col.bypass}
+                  bypassShare={col.bypassShare}
                   editable={editable}
                   onEdit={() => actions.onEditStep(col.step.id)}
                   onMoveL={

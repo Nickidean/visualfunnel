@@ -25,6 +25,7 @@ export default function StepForm({
   const [desktop, setDesktop] = useState(initial?.data?.desktop ?? "");
   const [mobile, setMobile] = useState(initial?.data?.mobile ?? "");
   const [availability, setAvailability] = useState(initial?.availability || "both");
+  const [optional, setOptional] = useState(!!initial?.optional);
   const [image, setImage] = useState(initial?.screenshotUrl || null);
   const [links, setLinks] = useState(
     initial?.links ? initial.links.map((l) => ({ ...l })) : []
@@ -90,6 +91,7 @@ export default function StepForm({
       screenshotUrl: image || null,
       data: { desktop: parseCount(desktop), mobile: parseCount(mobile) },
       availability,
+      optional,
     });
   }
 
@@ -226,9 +228,29 @@ export default function StepForm({
           <Plus size={14} /> Add link
         </button>
 
+        {/* Optional / exception step */}
+        <label className="mb-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+          <input
+            type="checkbox"
+            checked={optional}
+            onChange={(e) => setOptional(e.target.checked)}
+            className="mt-0.5"
+          />
+          <span className="text-sm">
+            <span className="font-medium text-amber-800">
+              Optional / exception step
+            </span>
+            <span className="mt-0.5 block text-xs text-amber-700">
+              Only some users pass through here; the rest skip straight to the
+              next step. The funnel measures drop-off and conversion around it,
+              not through it. Use the notes above to explain why.
+            </span>
+          </span>
+        </label>
+
         {/* Per-device visitors */}
         <label className="block text-sm font-medium mb-1">
-          Visitors at this step{" "}
+          {optional ? "Visitors who went through" : "Visitors at this step"}{" "}
           <span className="text-slate-400 font-normal">(optional)</span>
         </label>
         <div className="grid grid-cols-2 gap-2 mb-3">

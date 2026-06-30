@@ -24,10 +24,15 @@ function buildFrames(vm) {
       frames.push({
         step: col.step,
         lane: null,
-        value: col.flow,
-        retention: col.retention,
+        value: col.optional ? col.through : col.flow,
+        retention: col.optional ? col.throughShare : col.retention,
         drop: col.drop && col.drop.abs > 0 ? col.drop.pct : null,
         share: null,
+        optional: col.optional || false,
+        through: col.through,
+        throughShare: col.throughShare,
+        bypass: col.bypass,
+        bypassShare: col.bypassShare,
       });
     } else {
       for (const lane of col.lanes) {
@@ -161,6 +166,11 @@ export default function PresentMode({ journey, device, onDeviceChange, onClose }
                 {f.lane}
               </span>
             )}
+            {f.optional && (
+              <span className="inline-block text-xs font-semibold bg-amber-400/20 text-amber-300 rounded-full px-3 py-1 mb-3">
+                Optional / exception step
+              </span>
+            )}
             <h2 className="text-3xl font-bold mb-4">{f.step.title}</h2>
 
             <div className="flex items-end gap-6 mb-5 flex-wrap">
@@ -170,9 +180,24 @@ export default function PresentMode({ journey, device, onDeviceChange, onClose }
                     {f.value.toLocaleString()}
                   </div>
                   <div className="text-xs text-white/50 mt-1">
-                    visitors ({device})
+                    {f.optional ? "came through" : `visitors (${device})`}
                     {f.retention != null
-                      ? ` · ${Math.round(f.retention * 100)}% of start`
+                      ? ` · ${Math.round(f.retention * 100)}%${
+                          f.optional ? " of previous" : " of start"
+                        }`
+                      : ""}
+                  </div>
+                </div>
+              )}
+              {f.optional && f.bypass != null && (
+                <div>
+                  <div className="text-2xl font-bold text-amber-300">
+                    {f.bypass.toLocaleString()}
+                  </div>
+                  <div className="text-xs text-white/50 mt-1">
+                    skipped
+                    {f.bypassShare != null
+                      ? ` · ${Math.round(f.bypassShare * 100)}%`
                       : ""}
                   </div>
                 </div>
