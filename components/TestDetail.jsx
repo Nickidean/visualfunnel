@@ -119,15 +119,19 @@ export default function TestDetail({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/40">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+    >
       <div
-        className="h-full w-full max-w-2xl overflow-y-auto bg-white shadow-xl"
+        className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-2xl bg-white shadow-xl"
+        onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label={`Test: ${t.name}`}
       >
         {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-3">
+        <div className="flex shrink-0 items-center justify-between rounded-t-2xl border-b border-slate-200 bg-white px-5 py-3">
           <h2 className="text-base font-semibold">Test</h2>
           <div className="flex items-center gap-2">
             <button
@@ -145,7 +149,7 @@ export default function TestDetail({
           </div>
         </div>
 
-        <div className="space-y-6 px-5 py-4">
+        <div className="flex-1 space-y-6 overflow-y-auto px-5 py-4">
           {/* Name + hypothesis */}
           <div className="space-y-3">
             <Field label="Name">
@@ -294,8 +298,8 @@ export default function TestDetail({
 
           {/* Metrics table */}
           <Field as="div" label="Metrics — mark one row as the headline (★)">
-            <div className="overflow-hidden rounded-md border border-slate-200">
-              <table className="w-full text-sm">
+            <div className="overflow-x-auto rounded-md border border-slate-200">
+              <table className="w-full min-w-[34rem] text-sm">
                 <thead className="bg-slate-50 text-xs text-slate-500">
                   <tr>
                     <th className="px-2 py-1.5 text-left font-medium">★</th>
