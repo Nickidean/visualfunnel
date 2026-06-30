@@ -9,6 +9,7 @@ import {
   FileText,
   Link as LinkIcon,
   FlaskConical,
+  Mail,
 } from "lucide-react";
 import { THUMB, PLACEHOLDER_ASPECT } from "@/lib/layout";
 import { badgeText } from "@/lib/tests";
@@ -22,6 +23,7 @@ export default function StepCard({
   small,
   editable,
   optional,
+  comms,
   throughShare,
   bypass,
   bypassShare,
@@ -44,12 +46,19 @@ export default function StepCard({
   return (
     <div
       className={`bg-white rounded-xl shadow-sm shrink-0 ${
-        optional
+        comms
+          ? "border-2 border-sky-300"
+          : optional
           ? "border-2 border-dashed border-amber-300"
           : "border border-slate-200"
       }`}
       style={{ width: small ? THUMB.cardSmall : THUMB.card }}
     >
+      {comms && (
+        <div className="flex items-center gap-1 rounded-t-xl bg-sky-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-sky-700">
+          <Mail size={12} /> Comms
+        </div>
+      )}
       {optional && (
         <div className="rounded-t-xl bg-amber-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700">
           Conditional step
@@ -95,10 +104,14 @@ export default function StepCard({
           ) : (
             <span className="text-xs text-slate-300">no data</span>
           )}
-          {r != null && (
-            <span className="text-xs text-slate-400">
-              {Math.round(r * 100)}%{optional ? " through" : ""}
-            </span>
+          {comms ? (
+            value != null && <span className="text-xs text-slate-400">sent</span>
+          ) : (
+            r != null && (
+              <span className="text-xs text-slate-400">
+                {Math.round(r * 100)}%{optional ? " through" : ""}
+              </span>
+            )
           )}
         </div>
 
@@ -106,10 +119,12 @@ export default function StepCard({
           <div
             className="h-full rounded-full transition-all duration-500"
             style={{
-              width: `${w}%`,
+              width: comms ? "100%" : `${w}%`,
               background:
                 value != null
-                  ? optional
+                  ? comms
+                    ? "linear-gradient(90deg,#0ea5e9,#38bdf8)"
+                    : optional
                     ? "linear-gradient(90deg,#f59e0b,#fbbf24)"
                     : "linear-gradient(90deg,#6366f1,#818cf8)"
                   : "#e2e8f0",

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X, Upload, Plus } from "lucide-react";
+import { X, Upload, Plus, Mail, MonitorSmartphone } from "lucide-react";
 import { uid, parseCount, AVAILABILITY } from "@/lib/model";
 
 const AVAIL_LABEL = {
@@ -16,14 +16,17 @@ export default function StepForm({
   mode,
   dest,
   initial,
+  defaultKind = "screen",
   uploadScreenshot,
   onCancel,
   onSave,
 }) {
+  const [kind, setKind] = useState(initial?.kind || defaultKind);
   const [title, setTitle] = useState(initial?.title || "");
   const [note, setNote] = useState(initial?.notes || "");
   const [desktop, setDesktop] = useState(initial?.data?.desktop ?? "");
   const [mobile, setMobile] = useState(initial?.data?.mobile ?? "");
+  const [sent, setSent] = useState(initial?.sent ?? "");
   const [availability, setAvailability] = useState(initial?.availability || "both");
   const [optional, setOptional] = useState(!!initial?.optional);
   const [image, setImage] = useState(initial?.screenshotUrl || null);
@@ -84,7 +87,23 @@ export default function StepForm({
         label: l.label.trim() || l.url.trim(),
         url: l.url.trim(),
       }));
+    if (kind === "comms") {
+      onSave({
+        kind: "comms",
+        title: title.trim() || "Untitled",
+        notes: note.trim(),
+        links: cleanLinks,
+        screenshotUrl: image || null,
+        sent: parseCount(sent),
+        // comms aren't part of the device-split funnel maths
+        data: { desktop: null, mobile: null },
+        availability: "both",
+        optional: false,
+      });
+      return;
+    }
     onSave({
+      kind: "screen",
       title: title.trim() || "Untitled",
       notes: note.trim(),
       links: cleanLinks,
@@ -92,6 +111,7 @@ export default function StepForm({
       data: { desktop: parseCount(desktop), mobile: parseCount(mobile) },
       availability,
       optional,
+      sent: null,
     });
   }
 
@@ -125,7 +145,29 @@ export default function StepForm({
           </button>
         </div>
 
-        {/* Screenshot dropzone */}
+        {/* Type */}
+        <div className="mb-4 inline-flex rounded-lg border border-slate-300 bg-white p-0.5">
+          <button
+            type="button"
+            onClick={() => setKind("screen")}
+            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
+              kind === "screen" ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"
+            }`}
+          >
+            <MonitorSmartphone size={14} /> Screen
+          </button>
+          <button
+            type="button"
+            onClick={() => setKind("comms")}
+            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
+              kind === "comms" ? "bg-sky-600 text-white" : "text-slate-600 hover:bg-slate-100"
+            }`}
+          >
+            <Mail size={14} /> Comms
+          </button>
+        </div>
+
+        {/* Screenshot / creative dropzone */}
         <div
           onClick={() => fileRef.current?.click()}
           onDragOver={(e) => e.preventDefault()}
@@ -228,6 +270,8 @@ export default function StepForm({
           <Plus size={14} /> Add link
         </button>
 
+        {kind === "screen" ? (
+          <>
         {/* Conditional step */}
         <label className="mb-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
           <input
@@ -291,6 +335,25 @@ export default function StepForm({
         <p className="text-xs text-slate-400 mb-5">
           Steps for one device do not appear in the other device&apos;s funnel.
         </p>
+          </>
+        ) : (
+          <>
+            <label className="block text-sm font-medium mb-1">
+              Sent <span className="text-slate-400 font-normal">(optional)</span>
+            </label>
+            <input
+              value={sent}
+              onChange={(e) => setSent(e.target.value)}
+              inputMode="numeric"
+              placeholder="e.g. 25000"
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 mb-2"
+            />
+            <p className="text-xs text-slate-400 mb-5">
+              A comms touchpoint (email, SMS, letter). It appears in the flow, but
+              the funnel measures drop-off and conversion around it, not through it.
+            </p>
+          </>
+        )}
 
         <div className="flex gap-2">
           <button

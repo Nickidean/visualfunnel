@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { GitFork, GitMerge, Trash2, Plus } from "lucide-react";
+import { GitFork, GitMerge, Trash2, Plus, Mail } from "lucide-react";
 import StepCard from "./StepCard";
 
 const Conn = ({ children }) => (
@@ -56,6 +56,13 @@ export default function Funnel({ vm, editable = false, actions = {}, testCounts 
                   <span className="text-indigo-400" title="rejoins">
                     <GitMerge size={18} />
                   </span>
+                ) : col.comms ? (
+                  <span
+                    className="text-sky-500"
+                    title="Comms touchpoint — measured around, not through"
+                  >
+                    <Mail size={16} />
+                  </span>
                 ) : col.optional ? (
                   <span
                     className="text-amber-500 text-[11px] font-semibold whitespace-nowrap"
@@ -76,6 +83,7 @@ export default function Funnel({ vm, editable = false, actions = {}, testCounts 
                   value={col.flow}
                   retention={col.retention}
                   optional={col.optional}
+                  comms={col.comms}
                   throughShare={col.throughShare}
                   bypass={col.bypass}
                   bypassShare={col.bypassShare}

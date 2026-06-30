@@ -9,6 +9,8 @@ import {
   Image as ImageIcon,
   Columns,
   Maximize2,
+  Share2,
+  Check,
 } from "lucide-react";
 import DeviceToggle from "./DeviceToggle";
 import PresentBoard from "./PresentBoard";
@@ -37,6 +39,7 @@ function buildFrames(vm) {
         drop: col.drop && col.drop.abs > 0 ? col.drop.pct : null,
         share: null,
         optional: col.optional || false,
+        comms: col.comms || false,
         through: col.through,
         throughShare: col.throughShare,
         bypass: col.bypass,
@@ -66,7 +69,14 @@ function buildFrames(vm) {
   return frames;
 }
 
-export default function PresentMode({ journey, device, onDeviceChange, onClose }) {
+export default function PresentMode({
+  journey,
+  device,
+  onDeviceChange,
+  onClose,
+  shareMode = false,
+  onEnableShare,
+}) {
   const vm = useMemo(() => buildViewModel(journey, device), [journey, device]);
   const frames = useMemo(() => buildFrames(vm), [vm]);
 
@@ -85,7 +95,7 @@ export default function PresentMode({ journey, device, onDeviceChange, onClose }
     return map;
   }, [journey]);
   const [idx, setIdx] = useState(0);
-  const [mode, setMode] = useState("walk"); // walk | overview
+  const [mode, setMode] = useState(shareMode ? "overview" : "walk"); // walk | overview
   const clamped = Math.min(idx, Math.max(0, frames.length - 1));
 
   // Jump from an overview tile into the walkthrough at that step.
@@ -144,12 +154,21 @@ export default function PresentMode({ journey, device, onDeviceChange, onClose }
               {frames.length ? `${clamped + 1} / ${frames.length}` : "0 / 0"}
             </div>
           )}
-          <button
-            onClick={onClose}
-            className="text-white/60 hover:text-white flex items-center gap-1.5 text-sm"
-          >
-            <X size={18} /> Exit
-          </button>
+          {!shareMode && onEnableShare && (
+            <ShareButton journeyId={journey.id} onEnableShare={onEnableShare} />
+          )}
+          {shareMode ? (
+            <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs text-white/60">
+              Read-only
+            </span>
+          ) : (
+            <button
+              onClick={onClose}
+              className="text-white/60 hover:text-white flex items-center gap-1.5 text-sm"
+            >
+              <X size={18} /> Exit
+            </button>
+          )}
         </div>
       </div>
 
@@ -194,6 +213,11 @@ export default function PresentMode({ journey, device, onDeviceChange, onClose }
                 Conditional step
               </span>
             )}
+            {f.comms && (
+              <span className="inline-block text-xs font-semibold bg-sky-400/20 text-sky-300 rounded-full px-3 py-1 mb-3">
+                Comms
+              </span>
+            )}
             <h2 className="text-3xl font-bold mb-4">{f.step.title}</h2>
 
             <div className="flex items-end gap-6 mb-5 flex-wrap">
@@ -203,7 +227,7 @@ export default function PresentMode({ journey, device, onDeviceChange, onClose }
                     {f.value.toLocaleString()}
                   </div>
                   <div className="text-xs text-white/50 mt-1">
-                    {f.optional ? "came through" : `visitors (${device})`}
+                    {f.comms ? "sent" : f.optional ? "came through" : `visitors (${device})`}
                     {f.retention != null
                       ? ` · ${Math.round(f.retention * 100)}%${
                           f.optional ? " of previous" : " of start"
@@ -358,5 +382,35 @@ export default function PresentMode({ journey, device, onDeviceChange, onClose }
         </div>
       )}
     </div>
+  );
+}
+
+// Enables sharing (persists the flag) and copies the read-only link.
+function ShareButton({ journeyId, onEnableShare }) {
+  const [copied, setCopied] = useState(false);
+  async function share() {
+    onEnableShare();
+    const url = `${window.location.origin}/share/${journeyId}`;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      window.prompt("Copy this read-only link:", url);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  }
+  return (
+    <button
+      onClick={share}
+      className="flex items-center gap-1.5 rounded-md bg-white/10 px-3 py-1.5 text-sm hover:bg-white/20"
+      title="Copy a read-only link to this overview"
+    >
+      {copied ? (
+        <Check size={15} className="text-emerald-300" />
+      ) : (
+        <Share2 size={15} />
+      )}
+      {copied ? "Link copied" : "Share"}
+    </button>
   );
 }

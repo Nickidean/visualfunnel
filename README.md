@@ -32,6 +32,13 @@ storage, deployable on Netlify.
 - **Present overview** — a board view of the whole journey at once: drag to pan,
   scroll (mouse wheel) to zoom, "Fit" to frame everything, and click any step to
   jump into the walkthrough there.
+- **Comms cards** — a step can be a screen or a **comms touchpoint** (email/SMS/
+  letter). A comms shows in the flow with a "sent" number, but the funnel
+  measures drop-off and conversion *around* it (it isn't a screen people
+  progress through). Add one via **Add → Add comms**.
+- **Read-only share link** — from Present, click **Share** to copy a public
+  `/share/<id>` link that opens the journey in a read-only overview (no sign-in
+  needed). Sharing is opt-in per journey; see the RLS note below.
 - **Test tracking (A/B tests)** — a Funnel / Tests toggle in the editor. Each
   test is pinned to a step, several steps, or the whole funnel, so it sits next
   to the leak it targets. Tests carry hypothesis, status (Idea → Live →
@@ -96,6 +103,12 @@ row-level security.
 Once these are set the app shows a sign-in screen; after signing in, journeys
 and screenshots persist to Supabase and sync across sessions and devices.
 Without the env vars the app skips sign-in and saves to browser localStorage.
+
+> **Read-only sharing.** The schema includes an "anyone reads shared journeys"
+> policy that lets anonymous viewers read a journey once its owner turns sharing
+> on (it sets `structure.shared = true`). This powers the public `/share/<id>`
+> link. If you ran an earlier version of the schema, re-run that one policy
+> statement from `supabase/schema.sql`.
 
 ## Data model
 

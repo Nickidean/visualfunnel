@@ -5,12 +5,11 @@ import {
   Plus,
   GitFork,
   Play,
-  Copy,
-  Check,
   Pencil,
   ChevronLeft,
   ChevronDown,
   FlaskConical,
+  Mail,
 } from "lucide-react";
 import DeviceToggle from "./DeviceToggle";
 import Funnel from "./Funnel";
@@ -20,7 +19,6 @@ import PresentMode from "./PresentMode";
 import TestsBoard from "./TestsBoard";
 import TestDetail from "./TestDetail";
 import { buildViewModel } from "@/lib/compute";
-import { exportJourneyText } from "@/lib/exportText";
 import { saveJourney, uploadScreenshot } from "@/lib/journeys";
 import * as ops from "@/lib/structureOps";
 import * as tests from "@/lib/tests";
@@ -31,7 +29,6 @@ export default function Editor({ initialJourney, onBack, onSaved }) {
   const [form, setForm] = useState(null); // { mode, dest, fid, lid, stepId }
   const [lightbox, setLightbox] = useState(null);
   const [present, setPresent] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [saveState, setSaveState] = useState("saved"); // saved | saving | dirty
 
@@ -165,13 +162,6 @@ export default function Editor({ initialJourney, onBack, onSaved }) {
     setForm(null);
   }
 
-  function exportOutline() {
-    const text = exportJourneyText(journey, device);
-    navigator.clipboard?.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
-  }
-
   const overall = vm.conversion;
   const hasNumbers = vm.firstValue != null;
 
@@ -256,20 +246,11 @@ export default function Editor({ initialJourney, onBack, onSaved }) {
                 >
                   <Play size={15} /> Present
                 </button>
-                <button
-                  onClick={exportOutline}
-                  className="flex items-center gap-1.5 text-sm bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 rounded-lg px-3 py-2"
-                  title="Copy a text outline"
-                >
-                  {copied ? (
-                    <Check size={15} className="text-emerald-600" />
-                  ) : (
-                    <Copy size={15} />
-                  )}
-                  {copied ? "Copied" : "Export"}
-                </button>
                 <AddMenu
                   onAddStep={() => setForm({ mode: "add", dest: "shared" })}
+                  onAddComms={() =>
+                    setForm({ mode: "add", dest: "shared", kind: "comms" })
+                  }
                   onAddBranch={() => apply((s) => ops.addForkSection(s))}
                 />
               </>
@@ -336,9 +317,8 @@ export default function Editor({ initialJourney, onBack, onSaved }) {
             )}
 
             <p className="text-xs text-slate-400 mt-4">
-              Saved to {journey.id ? "your library" : "this session"}. Use Export
-              to copy a text outline. Present walks the journey full-size; links
-              open in a new tab.
+              Saved to {journey.id ? "your library" : "this session"}. Present
+              walks the journey full-size; use Share there for a read-only link.
             </p>
           </>
         ) : (
@@ -363,6 +343,7 @@ export default function Editor({ initialJourney, onBack, onSaved }) {
         <StepForm
           mode={form.mode}
           dest={form.dest}
+          defaultKind={form.kind || "screen"}
           initial={form.mode === "edit" ? findStep(form.stepId) : null}
           uploadScreenshot={(file) => uploadScreenshot(file, journey.id)}
           onCancel={() => setForm(null)}
@@ -384,6 +365,7 @@ export default function Editor({ initialJourney, onBack, onSaved }) {
           device={device}
           onDeviceChange={setDevice}
           onClose={() => setPresent(false)}
+          onEnableShare={() => apply((s) => ({ ...s, shared: true }))}
         />
       )}
 
@@ -409,9 +391,20 @@ function Divider() {
   return <span className="mx-0.5 hidden h-6 w-px bg-slate-200 sm:block" />;
 }
 
-// Small "Add ▾" dropdown that groups Add step / Add branch.
-function AddMenu({ onAddStep, onAddBranch }) {
+// Small "Add ▾" dropdown that groups Add step / comms / branch.
+function AddMenu({ onAddStep, onAddComms, onAddBranch }) {
   const [open, setOpen] = useState(false);
+  const item = (icon, label, fn) => (
+    <button
+      onClick={() => {
+        fn();
+        setOpen(false);
+      }}
+      className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"
+    >
+      {icon} {label}
+    </button>
+  );
   return (
     <div className="relative">
       <button
@@ -424,24 +417,9 @@ function AddMenu({ onAddStep, onAddBranch }) {
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
           <div className="absolute right-0 z-20 mt-1 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
-            <button
-              onClick={() => {
-                onAddStep();
-                setOpen(false);
-              }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"
-            >
-              <Plus size={15} /> Add step
-            </button>
-            <button
-              onClick={() => {
-                onAddBranch();
-                setOpen(false);
-              }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"
-            >
-              <GitFork size={15} /> Add branch
-            </button>
+            {item(<Plus size={15} />, "Add step", onAddStep)}
+            {item(<Mail size={15} />, "Add comms", onAddComms)}
+            {item(<GitFork size={15} />, "Add branch", onAddBranch)}
           </div>
         </>
       )}

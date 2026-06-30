@@ -26,6 +26,14 @@ create policy "owners read own journeys"
   on public.journeys for select
   using (auth.uid() = owner);
 
+-- Read-only sharing: anyone (including anonymous viewers) can read a journey
+-- once its owner turns sharing on (structure.shared = true). This powers the
+-- public /share/<id> link.
+drop policy if exists "anyone reads shared journeys" on public.journeys;
+create policy "anyone reads shared journeys"
+  on public.journeys for select
+  using (coalesce((structure ->> 'shared')::boolean, false) = true);
+
 drop policy if exists "owners insert own journeys" on public.journeys;
 create policy "owners insert own journeys"
   on public.journeys for insert

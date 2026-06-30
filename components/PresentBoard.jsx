@@ -8,6 +8,7 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize,
+  Mail,
 } from "lucide-react";
 import { THUMB, PLACEHOLDER_ASPECT } from "@/lib/layout";
 
@@ -41,17 +42,22 @@ function dropLabelFromCol(col) {
 }
 
 // A large, clickable step tile: fixed width, natural height (full screenshot).
-function Tile({ step, value, retention, onPick, small, optional, throughShare, bypass, bypassShare }) {
-  const r = optional ? throughShare : retention;
-  const w = r != null ? Math.max(r * 100, 8) : 100;
+function Tile({ step, value, retention, onPick, small, optional, comms, throughShare, bypass, bypassShare }) {
+  const r = comms ? null : optional ? throughShare : retention;
+  const w = comms ? 100 : r != null ? Math.max(r * 100, 8) : 100;
   return (
     <button
       onClick={onPick}
       className={`text-left bg-white rounded-xl shadow-lg overflow-hidden shrink-0 hover:ring-2 hover:ring-indigo-400 transition ${
-        optional ? "ring-2 ring-amber-300" : ""
+        comms ? "ring-2 ring-sky-300" : optional ? "ring-2 ring-amber-300" : ""
       }`}
       style={{ width: small ? THUMB.boardSmall : THUMB.board }}
     >
+      {comms && (
+        <div className="flex items-center gap-1 bg-sky-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-sky-700">
+          <Mail size={12} /> Comms
+        </div>
+      )}
       {optional && (
         <div className="bg-amber-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700">
           Conditional step
@@ -82,11 +88,15 @@ function Tile({ step, value, retention, onPick, small, optional, throughShare, b
           ) : (
             <span className="text-xs text-slate-300">no data</span>
           )}
-          {r != null && (
-            <span className="text-xs text-slate-400">
-              {Math.round(r * 100)}%{optional ? " through" : ""}
-            </span>
-          )}
+          {comms
+            ? value != null && (
+                <span className="text-xs text-slate-400">sent</span>
+              )
+            : r != null && (
+                <span className="text-xs text-slate-400">
+                  {Math.round(r * 100)}%{optional ? " through" : ""}
+                </span>
+              )}
         </div>
         <div className="h-2 mt-1.5">
           <div
@@ -95,7 +105,9 @@ function Tile({ step, value, retention, onPick, small, optional, throughShare, b
               width: `${w}%`,
               background:
                 value != null
-                  ? optional
+                  ? comms
+                    ? "linear-gradient(90deg,#0ea5e9,#38bdf8)"
+                    : optional
                     ? "linear-gradient(90deg,#f59e0b,#fbbf24)"
                     : "linear-gradient(90deg,#6366f1,#818cf8)"
                   : "#e2e8f0",
@@ -281,6 +293,10 @@ export default function PresentBoard({ vm, onPick }) {
                     <span className="text-indigo-300 self-center px-1">
                       <GitMerge size={22} />
                     </span>
+                  ) : col.comms ? (
+                    <span className="text-sky-300 self-center px-1">
+                      <Mail size={18} />
+                    </span>
                   ) : col.optional ? (
                     <span className="text-amber-300 text-xs font-semibold self-center px-1 whitespace-nowrap">
                       ⤴ conditional
@@ -296,6 +312,7 @@ export default function PresentBoard({ vm, onPick }) {
                       value={col.flow}
                       retention={col.retention}
                       optional={col.optional}
+                      comms={col.comms}
                       throughShare={col.throughShare}
                       bypass={col.bypass}
                       bypassShare={col.bypassShare}
