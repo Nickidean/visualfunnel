@@ -228,7 +228,7 @@ export default function StepForm({
           <Plus size={14} /> Add link
         </button>
 
-        {/* Optional / exception step */}
+        {/* Conditional step */}
         <label className="mb-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
           <input
             type="checkbox"
@@ -237,13 +237,12 @@ export default function StepForm({
             className="mt-0.5"
           />
           <span className="text-sm">
-            <span className="font-medium text-amber-800">
-              Optional / exception step
-            </span>
+            <span className="font-medium text-amber-800">Conditional step</span>
             <span className="mt-0.5 block text-xs text-amber-700">
-              Only some users pass through here; the rest skip straight to the
-              next step. The funnel measures drop-off and conversion around it,
-              not through it. Use the notes above to explain why.
+              Users are routed here only when a condition is met (e.g. we can&apos;t
+              find their meter reference); everyone else continues to the next
+              step. The funnel measures drop-off and conversion around it, not
+              through it. Use the notes above to explain the condition.
             </span>
           </span>
         </label>

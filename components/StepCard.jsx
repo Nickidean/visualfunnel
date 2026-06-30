@@ -47,7 +47,7 @@ export default function StepCard({
     >
       {optional && (
         <div className="rounded-t-xl bg-amber-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700">
-          Optional step
+          Conditional step
         </div>
       )}
       {step.screenshotUrl ? (

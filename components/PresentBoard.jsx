@@ -54,7 +54,7 @@ function Tile({ step, value, retention, onPick, small, optional, throughShare, b
     >
       {optional && (
         <div className="bg-amber-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700">
-          Optional step
+          Conditional step
         </div>
       )}
       {step.screenshotUrl ? (
@@ -283,7 +283,7 @@ export default function PresentBoard({ vm, onPick }) {
                     </span>
                   ) : col.optional ? (
                     <span className="text-amber-300 text-xs font-semibold self-center px-1 whitespace-nowrap">
-                      ⤴ optional
+                      ⤴ conditional
                     </span>
                   ) : (
                     dropLabelFromCol(col) || ARROW

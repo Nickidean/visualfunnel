@@ -168,7 +168,7 @@ export default function PresentMode({ journey, device, onDeviceChange, onClose }
             )}
             {f.optional && (
               <span className="inline-block text-xs font-semibold bg-amber-400/20 text-amber-300 rounded-full px-3 py-1 mb-3">
-                Optional / exception step
+                Conditional step
               </span>
             )}
             <h2 className="text-3xl font-bold mb-4">{f.step.title}</h2>

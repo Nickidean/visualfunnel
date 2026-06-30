@@ -59,9 +59,9 @@ export default function Funnel({ vm, editable = false, actions = {} }) {
                 ) : col.optional ? (
                   <span
                     className="text-amber-500 text-[11px] font-semibold whitespace-nowrap"
-                    title="Optional / exception step — some users take this detour"
+                    title="Conditional step — some users are routed down this path"
                   >
-                    ⤴ optional
+                    ⤴ conditional
                   </span>
                 ) : (
                   dropChipFromCol(col)
