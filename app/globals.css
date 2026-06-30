@@ -27,14 +27,29 @@ body {
   border-radius: 4px;
 }
 
-/* Thin horizontal scrollbar for the funnel rail. */
+/* Subtle, thin horizontal scrollbar for the funnel rail. Transparent track and
+   a faint thumb that only firms up on hover, so it doesn't read as a heavy bar
+   across the page when the funnel is short. */
 .funnel-rail {
   scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.funnel-rail:hover {
+  scrollbar-color: #cbd5e1 transparent;
 }
 .funnel-rail::-webkit-scrollbar {
-  height: 10px;
+  height: 8px;
+}
+.funnel-rail::-webkit-scrollbar-track {
+  background: transparent;
 }
 .funnel-rail::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: transparent;
   border-radius: 9999px;
+}
+.funnel-rail:hover::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+.funnel-rail::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
