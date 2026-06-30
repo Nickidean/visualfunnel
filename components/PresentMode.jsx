@@ -15,14 +15,6 @@ import {
 import DeviceToggle from "./DeviceToggle";
 import PresentBoard from "./PresentBoard";
 import { buildViewModel } from "@/lib/compute";
-import { getTests, headlineText } from "@/lib/tests";
-
-const STATUS_RANK = { live: 0, completed: 1, idea: 2 };
-const VERDICT_CHIP = {
-  won: "bg-emerald-400/20 text-emerald-300",
-  flat: "bg-white/10 text-white/60",
-  lost: "bg-rose-400/20 text-rose-300",
-};
 
 // Flatten the device view-model into ordered present-mode frames. At a fork,
 // each lane is walked in turn; the first lane step carries its traffic share,
@@ -79,21 +71,6 @@ export default function PresentMode({
 }) {
   const vm = useMemo(() => buildViewModel(journey, device), [journey, device]);
   const frames = useMemo(() => buildFrames(vm), [vm]);
-
-  // Tests linked to each step, so the walkthrough can show past & present
-  // A/B tests beside the step they ran on.
-  const testsByStep = useMemo(() => {
-    const map = {};
-    for (const test of getTests(journey.structure)) {
-      for (const sid of test.stepIds || []) {
-        (map[sid] = map[sid] || []).push(test);
-      }
-    }
-    for (const sid of Object.keys(map)) {
-      map[sid].sort((a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status]);
-    }
-    return map;
-  }, [journey]);
   const [idx, setIdx] = useState(0);
   const [mode, setMode] = useState(shareMode ? "overview" : "walk"); // walk | overview
   const clamped = Math.min(idx, Math.max(0, frames.length - 1));
@@ -292,52 +269,6 @@ export default function PresentMode({
               </div>
             )}
 
-            {(testsByStep[f.step.id] || []).length > 0 && (
-              <div className="mt-6">
-                <div className="text-[11px] uppercase tracking-wide text-white/50">
-                  A/B tests on this step
-                </div>
-                <ul className="mt-2 space-y-2">
-                  {testsByStep[f.step.id].map((test) => {
-                    const headline = headlineText(test);
-                    return (
-                      <li
-                        key={test.id}
-                        className="rounded-lg border border-white/10 bg-white/5 px-3 py-2"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-medium">{test.name}</span>
-                          {test.status === "completed" ? (
-                            <span
-                              className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                                VERDICT_CHIP[test.verdict] || "bg-white/10 text-white/60"
-                              }`}
-                            >
-                              {test.verdict
-                                ? test.verdict[0].toUpperCase() + test.verdict.slice(1)
-                                : "Completed"}
-                            </span>
-                          ) : (
-                            <span
-                              className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                                test.status === "live"
-                                  ? "bg-indigo-400/20 text-indigo-200"
-                                  : "bg-white/10 text-white/60"
-                              }`}
-                            >
-                              {test.status === "live" ? "Live" : "Idea"}
-                            </span>
-                          )}
-                        </div>
-                        {headline && (
-                          <div className="mt-0.5 text-xs text-white/60">{headline}</div>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            )}
           </div>
         </div>
       )}

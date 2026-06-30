@@ -39,18 +39,6 @@ storage, deployable on Netlify.
 - **Read-only share link** — from Present, click **Share** to copy a public
   `/share/<id>` link that opens the journey in a read-only overview (no sign-in
   needed). Sharing is opt-in per journey; see the RLS note below.
-- **Test tracking (A/B tests)** — a Funnel / Tests toggle in the editor. Each
-  test is pinned to a step, several steps, or the whole funnel, so it sits next
-  to the leak it targets. Tests carry hypothesis, status (Idea → Live →
-  Completed) with a verdict (won/flat/lost) and decision (shipped/dropped/
-  iterate), exposure, dates, a flexible metric table (mark one row the
-  headline), incremental sales, notes, before/after images and labelled links.
-  - **Board** with Idea / Live / Completed columns; each card shows only name,
-    linked step(s), headline metric and verdict — full detail one click away.
-  - **Summary strip**: live count, completed this quarter, won, and combined
-    incremental sales (plus a £ impact when "value per sale" is set).
-  - **Funnel badges**: each step shows a badge for its tests (e.g. "1 live · 2
-    done"); click it to see those tests. Whole-funnel tests show on the header.
 - **Export** — the journey as a text outline, including branches and links,
   respecting the selected device.
 - **Present mode** — full-screen walkthrough, one step at a time, screenshot

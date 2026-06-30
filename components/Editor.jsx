@@ -8,7 +8,6 @@ import {
   Pencil,
   ChevronLeft,
   ChevronDown,
-  FlaskConical,
   Mail,
 } from "lucide-react";
 import DeviceToggle from "./DeviceToggle";
@@ -16,27 +15,18 @@ import Funnel from "./Funnel";
 import StepForm from "./StepForm";
 import Lightbox from "./Lightbox";
 import PresentMode from "./PresentMode";
-import TestsBoard from "./TestsBoard";
-import TestDetail from "./TestDetail";
 import { buildViewModel } from "@/lib/compute";
 import { saveJourney, uploadScreenshot } from "@/lib/journeys";
 import * as ops from "@/lib/structureOps";
-import * as tests from "@/lib/tests";
 
 export default function Editor({ initialJourney, onBack, onSaved }) {
   const [journey, setJourney] = useState(initialJourney);
   const [device, setDevice] = useState("desktop");
-  const [form, setForm] = useState(null); // { mode, dest, fid, lid, stepId }
+  const [form, setForm] = useState(null); // { mode, dest, fid, lid, stepId, kind }
   const [lightbox, setLightbox] = useState(null);
   const [present, setPresent] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [saveState, setSaveState] = useState("saved"); // saved | saving | dirty
-
-  // Tests layer
-  const [tab, setTab] = useState("funnel"); // funnel | tests
-  const [openTestId, setOpenTestId] = useState(null);
-  const [testStepFilter, setTestStepFilter] = useState(null);
-  const [testVerdictFilter, setTestVerdictFilter] = useState(null);
 
   const saveTimer = useRef(null);
   const firstRender = useRef(true);
@@ -80,38 +70,6 @@ export default function Editor({ initialJourney, onBack, onSaved }) {
     setJourney((j) => ({ ...j, structure: fn(j.structure) }));
   }, []);
 
-  // Tests-layer derived data.
-  const allTests = useMemo(() => tests.getTests(journey.structure), [journey]);
-  const titleMap = useMemo(() => tests.stepTitleMap(journey.structure), [journey]);
-  const stepList = useMemo(() => tests.listSteps(journey.structure), [journey]);
-  const testCounts = useMemo(
-    () => tests.testCountsByStep(journey.structure),
-    [journey]
-  );
-  const funnelWide = useMemo(
-    () => tests.funnelWideCounts(journey.structure),
-    [journey]
-  );
-  const stats = useMemo(() => tests.summaryStats(journey.structure), [journey]);
-  const openTest = useMemo(
-    () => allTests.find((t) => t.id === openTestId) || null,
-    [allTests, openTestId]
-  );
-
-  function newTest() {
-    const t = tests.newTest(
-      testStepFilter ? { stepIds: [testStepFilter] } : {}
-    );
-    apply((s) => tests.addTest(s, t));
-    setTab("tests");
-    setOpenTestId(t.id);
-  }
-  function openStepTests(stepId) {
-    setTestStepFilter(stepId);
-    setTestVerdictFilter(null);
-    setTab("tests");
-  }
-
   // Find a step anywhere by id (for edit-form initial values).
   const findStep = useCallback(
     (id) => {
@@ -142,11 +100,6 @@ export default function Editor({ initialJourney, onBack, onSaved }) {
       onRenameLane: (fid, lid, name) =>
         apply((s) => ops.renameLane(s, fid, lid, name)),
       onRemoveFork: (fid) => apply((s) => ops.removeFork(s, fid)),
-      onStepTests: (id) => {
-        setTestStepFilter(id);
-        setTestVerdictFilter(null);
-        setTab("tests");
-      },
     }),
     [apply]
   );
@@ -210,133 +163,70 @@ export default function Editor({ initialJourney, onBack, onSaved }) {
                 ? "Unsaved…"
                 : "Saved"}
             </span>
-
-            {/* Funnel / Tests view toggle */}
-            <div className="inline-flex rounded-lg border border-slate-300 bg-white p-0.5">
-              <button
-                onClick={() => setTab("funnel")}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
-                  tab === "funnel" ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"
-                }`}
-              >
-                <GitFork size={14} /> Funnel
-              </button>
-              <button
-                onClick={() => setTab("tests")}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
-                  tab === "tests" ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"
-                }`}
-              >
-                <FlaskConical size={14} /> Tests
-                {allTests.length > 0 && (
-                  <span className="rounded-full bg-indigo-100 px-1.5 text-[11px] text-indigo-700">
-                    {allTests.length}
-                  </span>
-                )}
-              </button>
-            </div>
-
-            {tab === "funnel" && (
-              <>
-                <Divider />
-                <button
-                  onClick={() => setPresent(true)}
-                  disabled={vm.columns.length === 0}
-                  className="flex items-center gap-1.5 text-sm bg-slate-800 hover:bg-slate-900 disabled:opacity-40 text-white rounded-lg px-3 py-2 font-medium"
-                >
-                  <Play size={15} /> Present
-                </button>
-                <AddMenu
-                  onAddStep={() => setForm({ mode: "add", dest: "shared" })}
-                  onAddComms={() =>
-                    setForm({ mode: "add", dest: "shared", kind: "comms" })
-                  }
-                  onAddBranch={() => apply((s) => ops.addForkSection(s))}
-                />
-              </>
-            )}
+            <button
+              onClick={() => setPresent(true)}
+              disabled={vm.columns.length === 0}
+              className="flex items-center gap-1.5 text-sm bg-slate-800 hover:bg-slate-900 disabled:opacity-40 text-white rounded-lg px-3 py-2 font-medium"
+            >
+              <Play size={15} /> Present
+            </button>
+            <AddMenu
+              onAddStep={() => setForm({ mode: "add", dest: "shared" })}
+              onAddComms={() =>
+                setForm({ mode: "add", dest: "shared", kind: "comms" })
+              }
+              onAddBranch={() => apply((s) => ops.addForkSection(s))}
+            />
           </div>
         </div>
 
-        {tab === "funnel" ? (
-          <>
-            {/* View row — device toggle sits with the funnel it controls */}
-            <div className="mb-5 flex flex-wrap items-center gap-3">
-              {journey.structure.sections.length > 0 && (
-                <DeviceToggle value={device} onChange={setDevice} size="sm" />
-              )}
-              <span className="text-sm text-slate-500">
-                {journey.structure.sections.length === 0 ? (
-                  "Add screens to build your journey"
-                ) : !hasNumbers ? (
-                  "Add visitor numbers to see the funnel"
-                ) : (
+        {/* View row — device toggle sits with the funnel it controls */}
+        <div className="mb-5 flex flex-wrap items-center gap-3">
+          {journey.structure.sections.length > 0 && (
+            <DeviceToggle value={device} onChange={setDevice} size="sm" />
+          )}
+          <span className="text-sm text-slate-500">
+            {journey.structure.sections.length === 0 ? (
+              "Add screens to build your journey"
+            ) : !hasNumbers ? (
+              "Add visitor numbers to see the funnel"
+            ) : (
+              <>
+                {overall != null && (
                   <>
-                    {overall != null && (
-                      <>
-                        <span className="font-semibold text-slate-700">
-                          {Math.round(overall * 100)}%
-                        </span>{" "}
-                        overall conversion
-                      </>
-                    )}
-                    {device === "combined" && (
-                      <span className="text-slate-400">
-                        {overall != null ? " · " : ""}combined (desktop + mobile)
-                      </span>
-                    )}
+                    <span className="font-semibold text-slate-700">
+                      {Math.round(overall * 100)}%
+                    </span>{" "}
+                    overall conversion
                   </>
                 )}
-              </span>
-              {funnelWide.total > 0 && (
-                <button
-                  onClick={() => {
-                    setTestStepFilter(null);
-                    setTab("tests");
-                  }}
-                  className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-600 hover:bg-indigo-100"
-                  title="Whole-funnel tests"
-                >
-                  <FlaskConical size={12} /> Funnel-wide:{" "}
-                  {tests.badgeText(funnelWide)}
-                </button>
-              )}
-            </div>
-
-            {/* Empty state */}
-            {journey.structure.sections.length === 0 ? (
-              <button
-                onClick={() => setForm({ mode: "add", dest: "shared" })}
-                className="w-full max-w-5xl border-2 border-dashed border-slate-300 rounded-2xl py-16 text-slate-400 hover:border-indigo-400 hover:text-indigo-500 flex flex-col items-center gap-2"
-              >
-                <Plus size={28} />
-                <span className="font-medium">Add your first screen</span>
-              </button>
-            ) : (
-              <Funnel vm={vm} editable actions={actions} testCounts={testCounts} />
+                {device === "combined" && (
+                  <span className="text-slate-400">
+                    {overall != null ? " · " : ""}combined (desktop + mobile)
+                  </span>
+                )}
+              </>
             )}
+          </span>
+        </div>
 
-            <p className="text-xs text-slate-400 mt-4">
-              Saved to {journey.id ? "your library" : "this session"}. Present
-              walks the journey full-size; use Share there for a read-only link.
-            </p>
-          </>
+        {/* Empty state */}
+        {journey.structure.sections.length === 0 ? (
+          <button
+            onClick={() => setForm({ mode: "add", dest: "shared" })}
+            className="w-full max-w-5xl border-2 border-dashed border-slate-300 rounded-2xl py-16 text-slate-400 hover:border-indigo-400 hover:text-indigo-500 flex flex-col items-center gap-2"
+          >
+            <Plus size={28} />
+            <span className="font-medium">Add your first screen</span>
+          </button>
         ) : (
-          <TestsBoard
-            tests={allTests}
-            titleMap={titleMap}
-            steps={stepList}
-            stats={stats}
-            valuePerSale={journey.structure.valuePerSale ?? null}
-            stepFilter={testStepFilter}
-            verdictFilter={testVerdictFilter}
-            onStepFilter={setTestStepFilter}
-            onVerdictFilter={setTestVerdictFilter}
-            onSetValuePerSale={(v) => apply((s) => tests.setValuePerSale(s, v))}
-            onNewTest={newTest}
-            onOpenTest={(id) => setOpenTestId(id)}
-          />
+          <Funnel vm={vm} editable actions={actions} />
         )}
+
+        <p className="text-xs text-slate-400 mt-4">
+          Saved to {journey.id ? "your library" : "this session"}. Present walks
+          the journey full-size; use Share there for a read-only link.
+        </p>
       </div>
 
       {form && (
@@ -368,27 +258,8 @@ export default function Editor({ initialJourney, onBack, onSaved }) {
           onEnableShare={() => apply((s) => ({ ...s, shared: true }))}
         />
       )}
-
-      {openTest && (
-        <TestDetail
-          test={openTest}
-          steps={stepList}
-          uploadScreenshot={(file) => uploadScreenshot(file, journey.id)}
-          onChange={(next) => apply((s) => tests.updateTest(s, openTest.id, next))}
-          onDelete={() => {
-            apply((s) => tests.deleteTest(s, openTest.id));
-            setOpenTestId(null);
-          }}
-          onClose={() => setOpenTestId(null)}
-          onLightbox={(src, alt) => setLightbox({ src, alt })}
-        />
-      )}
     </div>
   );
-}
-
-function Divider() {
-  return <span className="mx-0.5 hidden h-6 w-px bg-slate-200 sm:block" />;
 }
 
 // Small "Add ▾" dropdown that groups Add step / comms / branch.
