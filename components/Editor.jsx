@@ -9,7 +9,7 @@ import {
   Check,
   Pencil,
   ChevronLeft,
-  Columns,
+  ChevronDown,
   FlaskConical,
 } from "lucide-react";
 import DeviceToggle from "./DeviceToggle";
@@ -248,7 +248,9 @@ export default function Editor({ initialJourney, onBack, onSaved }) {
 
             {tab === "funnel" && (
               <>
+                <Divider />
                 <DeviceToggle value={device} onChange={setDevice} size="sm" />
+                <Divider />
                 <button
                   onClick={() => setPresent(true)}
                   disabled={vm.columns.length === 0}
@@ -258,7 +260,8 @@ export default function Editor({ initialJourney, onBack, onSaved }) {
                 </button>
                 <button
                   onClick={exportOutline}
-                  className="flex items-center gap-1.5 text-sm bg-white border border-slate-300 hover:border-slate-400 rounded-lg px-3 py-2"
+                  className="flex items-center gap-1.5 text-sm bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 rounded-lg px-3 py-2"
+                  title="Copy a text outline"
                 >
                   {copied ? (
                     <Check size={15} className="text-emerald-600" />
@@ -267,18 +270,10 @@ export default function Editor({ initialJourney, onBack, onSaved }) {
                   )}
                   {copied ? "Copied" : "Export"}
                 </button>
-                <button
-                  onClick={() => apply((s) => ops.addForkSection(s))}
-                  className="flex items-center gap-1.5 text-sm bg-white border border-slate-300 hover:border-slate-400 rounded-lg px-3 py-2"
-                >
-                  <GitFork size={15} /> Add branch
-                </button>
-                <button
-                  onClick={() => setForm({ mode: "add", dest: "shared" })}
-                  className="flex items-center gap-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-3 py-2 font-medium"
-                >
-                  <Plus size={16} /> Add step
-                </button>
+                <AddMenu
+                  onAddStep={() => setForm({ mode: "add", dest: "shared" })}
+                  onAddBranch={() => apply((s) => ops.addForkSection(s))}
+                />
               </>
             )}
           </div>
@@ -406,6 +401,50 @@ export default function Editor({ initialJourney, onBack, onSaved }) {
           onClose={() => setOpenTestId(null)}
           onLightbox={(src, alt) => setLightbox({ src, alt })}
         />
+      )}
+    </div>
+  );
+}
+
+function Divider() {
+  return <span className="mx-0.5 hidden h-6 w-px bg-slate-200 sm:block" />;
+}
+
+// Small "Add ▾" dropdown that groups Add step / Add branch.
+function AddMenu({ onAddStep, onAddBranch }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+      >
+        <Plus size={16} /> Add <ChevronDown size={14} />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 z-20 mt-1 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+            <button
+              onClick={() => {
+                onAddStep();
+                setOpen(false);
+              }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"
+            >
+              <Plus size={15} /> Add step
+            </button>
+            <button
+              onClick={() => {
+                onAddBranch();
+                setOpen(false);
+              }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50"
+            >
+              <GitFork size={15} /> Add branch
+            </button>
+          </div>
+        </>
       )}
     </div>
   );
