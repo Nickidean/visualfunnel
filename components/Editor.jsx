@@ -249,8 +249,6 @@ export default function Editor({ initialJourney, onBack, onSaved }) {
             {tab === "funnel" && (
               <>
                 <Divider />
-                <DeviceToggle value={device} onChange={setDevice} size="sm" />
-                <Divider />
                 <button
                   onClick={() => setPresent(true)}
                   disabled={vm.columns.length === 0}
@@ -281,30 +279,31 @@ export default function Editor({ initialJourney, onBack, onSaved }) {
 
         {tab === "funnel" ? (
           <>
-            {/* Subtitle */}
-            <p className="text-slate-500 text-sm mb-5 flex flex-wrap items-center gap-2">
-              <span>
+            {/* View row — device toggle sits with the funnel it controls */}
+            <div className="mb-5 flex flex-wrap items-center gap-3">
+              {journey.structure.sections.length > 0 && (
+                <DeviceToggle value={device} onChange={setDevice} size="sm" />
+              )}
+              <span className="text-sm text-slate-500">
                 {journey.structure.sections.length === 0 ? (
                   "Add screens to build your journey"
+                ) : !hasNumbers ? (
+                  "Add visitor numbers to see the funnel"
                 ) : (
                   <>
-                    journey flows left to right
                     {overall != null && (
                       <>
-                        {" "}
-                        · <span className="font-semibold text-slate-700">
+                        <span className="font-semibold text-slate-700">
                           {Math.round(overall * 100)}%
                         </span>{" "}
                         overall conversion
                       </>
                     )}
-                    {!hasNumbers && " · add visitor numbers to see the funnel"}
-                    {" · "}
-                    <span className="text-slate-400">
-                      {device === "combined"
-                        ? "combined (desktop + mobile)"
-                        : `${device} view`}
-                    </span>
+                    {device === "combined" && (
+                      <span className="text-slate-400">
+                        {overall != null ? " · " : ""}combined (desktop + mobile)
+                      </span>
+                    )}
                   </>
                 )}
               </span>
@@ -321,7 +320,7 @@ export default function Editor({ initialJourney, onBack, onSaved }) {
                   {tests.badgeText(funnelWide)}
                 </button>
               )}
-            </p>
+            </div>
 
             {/* Empty state */}
             {journey.structure.sections.length === 0 ? (
