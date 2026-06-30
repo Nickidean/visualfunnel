@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useCallback, useLayoutEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   GitFork,
   GitMerge,
@@ -9,6 +15,8 @@ import {
   ZoomOut,
   Maximize,
   Mail,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { THUMB, PLACEHOLDER_ASPECT } from "@/lib/layout";
 
@@ -188,24 +196,62 @@ export default function PresentBoard({ vm, onPick }) {
     }
   }, [zoom]);
 
-  // Mouse-wheel to zoom, centred on the cursor.
+  // Wheel/trackpad PANS by default; only zoom when ⌘/Ctrl is held (or pinch).
+  // This stops a trackpad scroll from accidentally zooming in and out.
   function onWheel(e) {
-    e.preventDefault();
     const sc = scroller.current;
     if (!sc) return;
-    const rect = sc.getBoundingClientRect();
-    const px = e.clientX - rect.left;
-    const py = e.clientY - rect.top;
-    const contentX = (sc.scrollLeft + px) / zoom;
-    const contentY = (sc.scrollTop + py) / zoom;
-    const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
-    const newZoom = clampZoom(zoom * factor);
-    pendingScroll.current = {
-      left: contentX * newZoom - px,
-      top: contentY * newZoom - py,
-    };
-    setZoom(newZoom);
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      const rect = sc.getBoundingClientRect();
+      const px = e.clientX - rect.left;
+      const py = e.clientY - rect.top;
+      const contentX = (sc.scrollLeft + px) / zoom;
+      const contentY = (sc.scrollTop + py) / zoom;
+      // Gentle, smooth zoom proportional to the gesture.
+      const newZoom = clampZoom(zoom * Math.exp(-e.deltaY * 0.0015));
+      pendingScroll.current = {
+        left: contentX * newZoom - px,
+        top: contentY * newZoom - py,
+      };
+      setZoom(newZoom);
+      return;
+    }
+    e.preventDefault();
+    if (e.deltaX !== 0) {
+      // Trackpad: pan in both axes naturally.
+      sc.scrollLeft += e.deltaX;
+      sc.scrollTop += e.deltaY;
+    } else {
+      // Mouse wheel (vertical only): move along the horizontal rail.
+      sc.scrollLeft += e.deltaY;
+    }
   }
+
+  // Smoothly pan by most of a screen (arrow buttons / keys).
+  function pan(dirX, dirY = 0) {
+    const sc = scroller.current;
+    if (!sc) return;
+    sc.scrollBy({
+      left: dirX * sc.clientWidth * 0.7,
+      top: dirY * sc.clientHeight * 0.7,
+      behavior: "smooth",
+    });
+  }
+
+  // Arrow keys pan the board.
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "ArrowRight") pan(1);
+      else if (e.key === "ArrowLeft") pan(-1);
+      else if (e.key === "ArrowDown") pan(0, 1);
+      else if (e.key === "ArrowUp") pan(0, -1);
+      else return;
+      e.preventDefault();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   function step(delta) {
     const sc = scroller.current;
@@ -361,6 +407,22 @@ export default function PresentBoard({ vm, onPick }) {
           </div>
         </div>
       </div>
+
+      {/* Pan arrows */}
+      <button
+        onClick={() => pan(-1)}
+        aria-label="Pan left"
+        className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-slate-800/80 p-2 text-white shadow-lg hover:bg-slate-700"
+      >
+        <ChevronLeft size={22} />
+      </button>
+      <button
+        onClick={() => pan(1)}
+        aria-label="Pan right"
+        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-slate-800/80 p-2 text-white shadow-lg hover:bg-slate-700"
+      >
+        <ChevronRight size={22} />
+      </button>
 
       {/* Zoom controls (bottom-right overlay) */}
       <div className="absolute bottom-4 right-4 flex items-center gap-1 rounded-lg bg-slate-800/90 border border-white/10 p-1 text-white shadow-lg">

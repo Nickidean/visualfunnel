@@ -378,7 +378,7 @@ export default function PresentMode({
 
       {mode === "overview" && frames.length > 0 && (
         <div className="text-center text-xs text-white/40 py-3 border-t border-white/10">
-          Drag to pan · scroll to zoom · click a step to walk it · Fit to see it all
+          Drag or scroll to pan · arrow keys/buttons to move · ⌘/Ctrl + scroll to zoom · click a step to walk it
         </div>
       )}
     </div>
